@@ -109,33 +109,54 @@ impl<'a> Backend<'a> {
                 check_empty!(buf);
                 Backend::CopyDone
             },
-            b'C' => Backend::CommandComplete(CommandCompleteBody(buf)),
-            b'd' => Backend::CopyData(CopyDataBody(buf)),
+            b'C' => {
+                let tag = try!(buf.read_cstr());
+                check_empty!(buf);
+                Backend::CommandComplete(CommandCompleteBody {
+                    tag: tag,
+                })
+            },
+            b'd' => {
+                Backend::CopyData(CopyDataBody {
+                    data: buf,
+                })
+            },
             b'D' => {
-                if buf.len() < 2 {
-                    return Err("invalid message length".into());
-                }
-                Backend::DataRow(DataRowBody(buf))
+                let len = try!(buf.read_u16::<BigEndian>());
+                Backend::DataRow(DataRowBody {
+                    len: len,
+                    buf: buf,
+                })
             },
             b'E' => Backend::ErrorResponse(ErrorResponseBody(buf)),
             b'G' => {
-                if buf.len() < 3 {
-                    return Err("invalid message length".into());
-                }
-                Backend::CopyInResponse(CopyInResponseBody(buf))
+                let format = try!(buf.read_u8());
+                let len = try!(buf.read_u16::<BigEndian>());
+                Backend::CopyInResponse(CopyInResponseBody {
+                    format: format,
+                    len: len,
+                    buf: buf,
+                })
             },
             b'H' => {
-                if buf.len() < 3 {
-                    return Err("invalid message length".into());
-                }
-                Backend::CopyOutResponse(CopyOutResponseBody(buf))
+                let format = try!(buf.read_u8());
+                let len = try!(buf.read_u16::<BigEndian>());
+                Backend::CopyOutResponse(CopyOutResponseBody {
+                    format: format,
+                    len: len,
+                    buf: buf,
+                })
             },
             b'I' => Backend::EmptyQueryResponse,
             b'K' => {
-                if buf.len() != 8 {
-                    return Err("invalid message length".into());
-                }
-                Backend::BackendKeyData(BackendKeyDataBody(buf))
+                let process_id = try!(buf.read_i32::<BigEndian>());
+                let secret_key = try!(buf.read_i32::<BigEndian>());
+                check_empty!(buf);
+                Backend::BackendKeyData(BackendKeyDataBody {
+                    process_id: process_id,
+                    secret_key: secret_key,
+                    _p: PhantomData,
+                })
             },
             b'n' => {
                 check_empty!(buf);
@@ -249,54 +270,57 @@ impl<'a> AuthenticationMd5PasswordBody<'a> {
     }
 }
 
-pub struct BackendKeyDataBody<'a>(&'a [u8]);
+pub struct BackendKeyDataBody<'a> {
+    process_id: i32,
+    secret_key: i32,
+    _p: PhantomData<&'a [u8]>,
+}
 
 impl<'a> BackendKeyDataBody<'a> {
-    pub fn process_id(&self) -> u32 {
-        let mut b = self.0;
-        b.read_u32::<BigEndian>().unwrap()
+    pub fn process_id(&self) -> i32 {
+        self.process_id
     }
 
-    pub fn secret_key(&self) -> u32 {
-        let mut b = &self.0[4..];
-        b.read_u32::<BigEndian>().unwrap()
+    pub fn secret_key(&self) -> i32 {
+        self.secret_key
     }
 }
 
-pub struct CommandCompleteBody<'a>(&'a [u8]);
+pub struct CommandCompleteBody<'a> {
+    tag: &'a str,
+}
 
 impl<'a> CommandCompleteBody<'a> {
-    pub fn tag(&self) -> Result<&'a str, Box<Error>> {
-        let head = match self.0.split_last() {
-            Some((&0, head)) => head,
-            _ => return Err("invalid message body".into()),
-        };
-
-        str::from_utf8(head).map_err(Into::into)
+    pub fn tag(&self) -> &'a str {
+        self.tag
     }
 }
 
-pub struct CopyDataBody<'a>(&'a [u8]);
+pub struct CopyDataBody<'a> {
+    data: &'a [u8],
+}
 
 impl<'a> CopyDataBody<'a> {
     pub fn data(&self) -> &'a [u8] {
-        self.0
+        self.data
     }
 }
 
-pub struct CopyInResponseBody<'a>(&'a [u8]);
+pub struct CopyInResponseBody<'a> {
+    format: u8,
+    len: u16,
+    buf: &'a [u8],
+}
 
 impl<'a> CopyInResponseBody<'a> {
     pub fn format(&self) -> u8 {
-        self.0[0]
+        self.format
     }
 
     pub fn column_formats(&self) -> ColumnFormats<'a> {
-        let mut b = &self.0[1..];
-        let len = b.read_u16::<BigEndian>().unwrap();
         ColumnFormats {
-            remaining: len,
-            buf: b,
+            remaining: self.len,
+            buf: self.buf,
         }
     }
 }
@@ -312,6 +336,7 @@ impl<'a> FallibleIterator for ColumnFormats<'a> {
 
     fn next(&mut self) -> Result<Option<u16>, Box<Error>> {
         if self.remaining == 0 {
+            check_empty!(self.buf);
             return Ok(None);
         }
         self.remaining -= 1;
@@ -324,32 +349,35 @@ impl<'a> FallibleIterator for ColumnFormats<'a> {
     }
 }
 
-pub struct CopyOutResponseBody<'a>(&'a [u8]);
+pub struct CopyOutResponseBody<'a> {
+    format: u8,
+    len: u16,
+    buf: &'a [u8],
+}
 
 impl<'a> CopyOutResponseBody<'a> {
     pub fn format(&self) -> u8 {
-        self.0[0]
+        self.format
     }
 
     pub fn column_formats(&self) -> ColumnFormats<'a> {
-        let mut b = &self.0[1..];
-        let len = b.read_u16::<BigEndian>().unwrap();
         ColumnFormats {
-            remaining: len,
-            buf: b,
+            remaining: self.len,
+            buf: self.buf,
         }
     }
 }
 
-pub struct DataRowBody<'a>(&'a [u8]);
+pub struct DataRowBody<'a> {
+    len: u16,
+    buf: &'a [u8],
+}
 
 impl<'a> DataRowBody<'a> {
     pub fn values(&self) -> DataRowValues<'a> {
-        let mut b = self.0;
-        let len = b.read_u16::<BigEndian>().unwrap();
         DataRowValues {
-            remaining: len,
-            buf: b,
+            remaining: self.len,
+            buf: self.buf,
         }
     }
 }
@@ -365,6 +393,7 @@ impl<'a> FallibleIterator for DataRowValues<'a> {
 
     fn next(&mut self) -> Result<Option<Option<&'a [u8]>>, Box<Error>> {
         if self.remaining == 0 {
+            check_empty!(self.buf);
             return Ok(None);
         }
         self.remaining -= 1;
@@ -406,6 +435,7 @@ impl<'a> FallibleIterator for ErrorFields<'a> {
     fn next(&mut self) -> Result<Option<ErrorField<'a>>, Box<Error>> {
         let type_ = try!(self.0.read_u8());
         if type_ == 0 {
+            check_empty!(self.0);
             return Ok(None);
         }
 
@@ -486,10 +516,7 @@ impl<'a> FallibleIterator for Parameters<'a> {
 
     fn next(&mut self) -> Result<Option<Oid>, Box<Error>> {
         if self.remaining == 0 {
-            if !self.buf.is_empty() {
-                return Err("invalid message length".into());
-            }
-
+            check_empty!(self.buf);
             return Ok(None);
         }
 
@@ -554,10 +581,7 @@ impl<'a> FallibleIterator for Fields<'a> {
 
     fn next(&mut self) -> Result<Option<Field<'a>>, Box<Error>> {
         if self.remaining == 0 {
-            if !self.buf.is_empty() {
-                return Err("invalid message length".into());
-            }
-
+            check_empty!(self.buf);
             return Ok(None);
         }
         self.remaining -= 1;
