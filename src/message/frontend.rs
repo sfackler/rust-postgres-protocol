@@ -188,6 +188,78 @@ impl<'a> Message for Parse<'a> {
     }
 }
 
+pub struct PasswordMessage<'a> {
+    pub password: &'a str,
+}
+
+impl<'a> Message for PasswordMessage<'a> {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+        buf.push(b'p');
+        write_body(buf, |buf| buf.write_cstr(self.password))
+    }
+}
+
+pub struct Query<'a> {
+    pub query: &'a str,
+}
+
+impl<'a> Message for Query<'a> {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+        buf.push(b'Q');
+        write_body(buf, |buf| buf.write_cstr(self.query))
+    }
+}
+
+pub struct SslRequest;
+
+impl Message for SslRequest {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+        write_body(buf, |buf| {
+            try!(buf.write_i32::<BigEndian>(80877103));
+            Ok(())
+        })
+    }
+}
+
+pub struct StartupMessage<'a, T: 'a, U: 'a> {
+    parameters: &'a [(T, U)],
+}
+
+impl<'a, T, U> Message for StartupMessage<'a, T, U>
+    where T: AsRef<str>,
+          U: AsRef<str>
+{
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+        write_body(buf, |buf| {
+            try!(buf.write_i32::<BigEndian>(196608));
+            for &(ref key, ref value) in self.parameters {
+                try!(buf.write_cstr(key.as_ref()));
+                try!(buf.write_cstr(value.as_ref()));
+            }
+            buf.push(0);
+            Ok(())
+        })
+    }
+}
+
+pub struct Sync;
+
+impl Message for Sync {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+        buf.push(b'S');
+        write_body(buf, |_| Ok(()))
+    }
+}
+
+pub struct Terminate;
+
+impl Message for Terminate {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+        buf.push(b'X');
+        write_body(buf, |_| Ok(()))
+    }
+}
+
 trait WriteCStr {
     fn write_cstr(&mut self, s: &str) -> Result<(), Box<Error>>;
 }
