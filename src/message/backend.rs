@@ -15,25 +15,7 @@ macro_rules! check_empty {
     }
 }
 
-trait ReadCStr<'a> {
-    fn read_cstr(&mut self) -> Result<&'a str, Box<Error>>;
-}
-
-impl<'a> ReadCStr<'a> for &'a [u8] {
-    fn read_cstr(&mut self) -> Result<&'a str, Box<Error>> {
-        let end = match self.iter().position(|&b| b == 0) {
-            Some(end) => end,
-            None => {
-                return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "unexpected EOF").into());
-            }
-        };
-        let s = try!(str::from_utf8(&self[..end]));
-        *self = &self[end + 1..];
-        Ok(s)
-    }
-}
-
-pub enum Backend<'a> {
+pub enum Message<'a> {
     AuthenticationCleartextPassword,
     AuthenticationGss,
     AuthenticationKerberosV5,
@@ -65,7 +47,7 @@ pub enum Backend<'a> {
     __ForExtensibility,
 }
 
-impl<'a> Backend<'a> {
+impl<'a> Message<'a> {
     pub fn parse(buf: &'a [u8]) -> Result<ParseResult<'a>, Box<Error>> {
         if buf.len() < 5 {
             return Ok(ParseResult::Incomplete { required_size: None });
@@ -84,22 +66,22 @@ impl<'a> Backend<'a> {
         let message = match tag {
             b'1' => {
                 check_empty!(buf);
-                Backend::ParseComplete
+                Message::ParseComplete
             },
             b'2' => {
                 check_empty!(buf);
-                Backend::BindComplete
+                Message::BindComplete
             },
             b'3' => {
                 check_empty!(buf);
-                Backend::CloseComplete
+                Message::CloseComplete
             },
             b'A' => {
                 let process_id = try!(buf.read_i32::<BigEndian>());
                 let channel = try!(buf.read_cstr());
                 let message = try!(buf.read_cstr());
                 check_empty!(buf);
-                Backend::NotificationResponse(NotificationResponseBody{
+                Message::NotificationResponse(NotificationResponseBody{
                     process_id: process_id,
                     channel: channel,
                     message: message,
@@ -107,32 +89,32 @@ impl<'a> Backend<'a> {
             },
             b'c' => {
                 check_empty!(buf);
-                Backend::CopyDone
+                Message::CopyDone
             },
             b'C' => {
                 let tag = try!(buf.read_cstr());
                 check_empty!(buf);
-                Backend::CommandComplete(CommandCompleteBody {
+                Message::CommandComplete(CommandCompleteBody {
                     tag: tag,
                 })
             },
             b'd' => {
-                Backend::CopyData(CopyDataBody {
+                Message::CopyData(CopyDataBody {
                     data: buf,
                 })
             },
             b'D' => {
                 let len = try!(buf.read_u16::<BigEndian>());
-                Backend::DataRow(DataRowBody {
+                Message::DataRow(DataRowBody {
                     len: len,
                     buf: buf,
                 })
             },
-            b'E' => Backend::ErrorResponse(ErrorResponseBody(buf)),
+            b'E' => Message::ErrorResponse(ErrorResponseBody(buf)),
             b'G' => {
                 let format = try!(buf.read_u8());
                 let len = try!(buf.read_u16::<BigEndian>());
-                Backend::CopyInResponse(CopyInResponseBody {
+                Message::CopyInResponse(CopyInResponseBody {
                     format: format,
                     len: len,
                     buf: buf,
@@ -141,18 +123,18 @@ impl<'a> Backend<'a> {
             b'H' => {
                 let format = try!(buf.read_u8());
                 let len = try!(buf.read_u16::<BigEndian>());
-                Backend::CopyOutResponse(CopyOutResponseBody {
+                Message::CopyOutResponse(CopyOutResponseBody {
                     format: format,
                     len: len,
                     buf: buf,
                 })
             },
-            b'I' => Backend::EmptyQueryResponse,
+            b'I' => Message::EmptyQueryResponse,
             b'K' => {
                 let process_id = try!(buf.read_i32::<BigEndian>());
                 let secret_key = try!(buf.read_i32::<BigEndian>());
                 check_empty!(buf);
-                Backend::BackendKeyData(BackendKeyDataBody {
+                Message::BackendKeyData(BackendKeyDataBody {
                     process_id: process_id,
                     secret_key: secret_key,
                     _p: PhantomData,
@@ -160,22 +142,22 @@ impl<'a> Backend<'a> {
             },
             b'n' => {
                 check_empty!(buf);
-                Backend::NoData
+                Message::NoData
             },
-            b'N' => Backend::NoticeResponse(NoticeResponseBody(buf)),
+            b'N' => Message::NoticeResponse(NoticeResponseBody(buf)),
             b'R' => {
                 match try!(buf.read_i32::<BigEndian>()) {
                     0 => {
                         check_empty!(buf);
-                        Backend::AuthenticationOk
+                        Message::AuthenticationOk
                     },
                     2 => {
                         check_empty!(buf);
-                        Backend::AuthenticationKerberosV5
+                        Message::AuthenticationKerberosV5
                     },
                     3 => {
                         check_empty!(buf);
-                        Backend::AuthenticationCleartextPassword
+                        Message::AuthenticationCleartextPassword
                     },
                     5 => {
                         if buf.len() != 4 {
@@ -184,49 +166,49 @@ impl<'a> Backend<'a> {
                         let mut salt = [0; 4];
                         salt.copy_from_slice(buf);
                         check_empty!(buf);
-                        Backend::AuthenticationMd55Password(AuthenticationMd5PasswordBody {
+                        Message::AuthenticationMd55Password(AuthenticationMd5PasswordBody {
                             salt: salt,
                             _p: PhantomData,
                         })
                     },
                     6 => {
                         check_empty!(buf);
-                        Backend::AuthenticationScmCredential
+                        Message::AuthenticationScmCredential
                     },
                     7 => {
                         check_empty!(buf);
-                        Backend::AuthenticationGss
+                        Message::AuthenticationGss
                     },
                     9 => {
                         check_empty!(buf);
-                        Backend::AuthenticationSspi
+                        Message::AuthenticationSspi
                     },
                     tag => return Err(format!("unknown authentication tag `{}`", tag).into()),
                 }
             }
             b's' => {
                 check_empty!(buf);
-                Backend::PortalSuspended
+                Message::PortalSuspended
             },
             b'S' => {
                 let name = try!(buf.read_cstr());
                 let value = try!(buf.read_cstr());
                 check_empty!(buf);
-                Backend::ParameterStatus(ParameterStatusBody {
+                Message::ParameterStatus(ParameterStatusBody {
                     name: name,
                     value: value,
                 })
             },
             b't' => {
                 let len = try!(buf.read_u16::<BigEndian>());
-                Backend::ParameterDescription(ParameterDescriptionBody {
+                Message::ParameterDescription(ParameterDescriptionBody {
                     len: len,
                     buf: buf,
                 })
             },
             b'T' => {
                 let len = try!(buf.read_u16::<BigEndian>());
-                Backend::RowDescription(RowDescriptionBody {
+                Message::RowDescription(RowDescriptionBody {
                     len: len,
                     buf: buf,
                 })
@@ -234,7 +216,7 @@ impl<'a> Backend<'a> {
             b'Z' => {
                 let status = try!(buf.read_u8());
                 check_empty!(buf);
-                Backend::ReadyForQuery(ReadyForQueryBody {
+                Message::ReadyForQuery(ReadyForQueryBody {
                     status: status,
                     _p: PhantomData,
                 })
@@ -251,7 +233,7 @@ impl<'a> Backend<'a> {
 
 pub enum ParseResult<'a> {
     Complete {
-        message: Backend<'a>,
+        message: Message<'a>,
         consumed: usize,
     },
     Incomplete {
@@ -643,5 +625,23 @@ impl<'a> Field<'a> {
 
     pub fn format(&self) -> i16 {
         self.format
+    }
+}
+
+trait ReadCStr<'a> {
+    fn read_cstr(&mut self) -> Result<&'a str, Box<Error>>;
+}
+
+impl<'a> ReadCStr<'a> for &'a [u8] {
+    fn read_cstr(&mut self) -> Result<&'a str, Box<Error>> {
+        let end = match self.iter().position(|&b| b == 0) {
+            Some(end) => end,
+            None => {
+                return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "unexpected EOF").into());
+            }
+        };
+        let s = try!(str::from_utf8(&self[..end]));
+        *self = &self[end + 1..];
+        Ok(s)
     }
 }
