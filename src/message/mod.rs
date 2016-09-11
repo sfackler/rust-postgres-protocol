@@ -1,3 +1,4 @@
+#[doc(inline)]
 pub use message::backend::Backend;
 
-mod backend;
+pub mod backend;
