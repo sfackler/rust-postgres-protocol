@@ -1,15 +1,14 @@
 use byteorder::{WriteBytesExt, BigEndian};
-use std::error::Error;
-use std::io::Cursor;
+use std::io::{self, Cursor};
 
 use message::Oid;
 
 pub trait Message {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>>;
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error>;
 }
 
-fn write_body<F>(buf: &mut Vec<u8>, f: F) -> Result<(), Box<Error>>
-    where F: FnOnce(&mut Vec<u8>) -> Result<(), Box<Error>>
+fn write_body<F>(buf: &mut Vec<u8>, f: F) -> Result<(), io::Error>
+    where F: FnOnce(&mut Vec<u8>) -> Result<(), io::Error>
 {
     let base = buf.len();
     buf.extend_from_slice(&[0; 4]);
@@ -32,7 +31,7 @@ pub struct Bind<'a, T: 'a> {
 impl<'a, T> Message for Bind<'a, T>
     where T: AsRef<[u8]>
 {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
         buf.push(b'B');
 
         write_body(buf, |buf| {
@@ -76,7 +75,7 @@ pub struct CancelRequest {
 }
 
 impl Message for CancelRequest {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
         write_body(buf, |buf| {
             try!(buf.write_i32::<BigEndian>(80877102));
             try!(buf.write_i32::<BigEndian>(self.process_id));
@@ -92,7 +91,7 @@ pub struct Close<'a> {
 }
 
 impl<'a> Message for Close<'a> {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
         buf.push(b'C');
         write_body(buf, |buf| {
             buf.push(self.variant);
@@ -106,7 +105,7 @@ pub struct CopyData<'a> {
 }
 
 impl<'a> Message for CopyData<'a> {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
         buf.push(b'd');
         write_body(buf, |buf| {
             buf.extend_from_slice(self.data);
@@ -118,7 +117,7 @@ impl<'a> Message for CopyData<'a> {
 pub struct CopyDone;
 
 impl Message for CopyDone {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
         buf.push(b'c');
         write_body(buf, |_| Ok(()))
     }
@@ -129,7 +128,7 @@ pub struct CopyFail<'a> {
 }
 
 impl<'a> Message for CopyFail<'a> {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
         buf.push(b'f');
         write_body(buf, |buf| buf.write_cstr(self.message))
     }
@@ -141,7 +140,7 @@ pub struct Describe<'a> {
 }
 
 impl<'a> Message for Describe<'a> {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
         buf.push(b'D');
         write_body(buf, |buf| {
             buf.push(self.variant);
@@ -156,7 +155,7 @@ pub struct Execute<'a> {
 }
 
 impl<'a> Message for Execute<'a> {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
         buf.push(b'E');
         write_body(buf, |buf| {
             try!(buf.write_cstr(self.portal));
@@ -173,7 +172,7 @@ pub struct Parse<'a> {
 }
 
 impl<'a> Message for Parse<'a> {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
         buf.push(b'P');
         write_body(buf, |buf| {
             try!(buf.write_cstr(self.name));
@@ -193,7 +192,7 @@ pub struct PasswordMessage<'a> {
 }
 
 impl<'a> Message for PasswordMessage<'a> {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
         buf.push(b'p');
         write_body(buf, |buf| buf.write_cstr(self.password))
     }
@@ -204,7 +203,7 @@ pub struct Query<'a> {
 }
 
 impl<'a> Message for Query<'a> {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
         buf.push(b'Q');
         write_body(buf, |buf| buf.write_cstr(self.query))
     }
@@ -213,7 +212,7 @@ impl<'a> Message for Query<'a> {
 pub struct SslRequest;
 
 impl Message for SslRequest {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
         write_body(buf, |buf| {
             try!(buf.write_i32::<BigEndian>(80877103));
             Ok(())
@@ -229,7 +228,7 @@ impl<'a, T, U> Message for StartupMessage<'a, T, U>
     where T: AsRef<str>,
           U: AsRef<str>
 {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
         write_body(buf, |buf| {
             try!(buf.write_i32::<BigEndian>(196608));
             for &(ref key, ref value) in self.parameters {
@@ -245,7 +244,7 @@ impl<'a, T, U> Message for StartupMessage<'a, T, U>
 pub struct Sync;
 
 impl Message for Sync {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
         buf.push(b'S');
         write_body(buf, |_| Ok(()))
     }
@@ -254,20 +253,21 @@ impl Message for Sync {
 pub struct Terminate;
 
 impl Message for Terminate {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), Box<Error>> {
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
         buf.push(b'X');
         write_body(buf, |_| Ok(()))
     }
 }
 
 trait WriteCStr {
-    fn write_cstr(&mut self, s: &str) -> Result<(), Box<Error>>;
+    fn write_cstr(&mut self, s: &str) -> Result<(), io::Error>;
 }
 
 impl WriteCStr for Vec<u8> {
-    fn write_cstr(&mut self, s: &str) -> Result<(), Box<Error>> {
+    fn write_cstr(&mut self, s: &str) -> Result<(), io::Error> {
         if s.as_bytes().contains(&0) {
-            return Err("string contains embedded null".into());
+            return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                      "string contains embedded null"));
         }
         self.extend_from_slice(s.as_bytes());
         self.push(0);
@@ -276,15 +276,15 @@ impl WriteCStr for Vec<u8> {
 }
 
 trait FromUsize: Sized {
-    fn from_usize(x: usize) -> Result<Self, Box<Error>>;
+    fn from_usize(x: usize) -> Result<Self, io::Error>;
 }
 
 macro_rules! from_usize {
     ($t:ty) => {
         impl FromUsize for $t {
-            fn from_usize(x: usize) -> Result<$t, Box<Error>> {
+            fn from_usize(x: usize) -> Result<$t, io::Error> {
                 if x > <$t>::max_value() as usize {
-                    Err("value too large to transmit".into())
+                    Err(io::Error::new(io::ErrorKind::InvalidInput, "value too large to transmit"))
                 } else {
                     Ok(x as $t)
                 }

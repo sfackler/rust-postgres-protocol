@@ -1,6 +1,5 @@
 use byteorder::{ReadBytesExt, BigEndian};
 use fallible_iterator::FallibleIterator;
-use std::error::Error;
 use std::io;
 use std::marker::PhantomData;
 use std::str;
@@ -10,7 +9,7 @@ use message::Oid;
 macro_rules! check_empty {
     ($buf:expr) => {
         if !$buf.is_empty() {
-            return Err("invalid message length".into());
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid message length"));
         }
     }
 }
@@ -48,7 +47,7 @@ pub enum Message<'a> {
 }
 
 impl<'a> Message<'a> {
-    pub fn parse(buf: &'a [u8]) -> Result<ParseResult<'a>, Box<Error>> {
+    pub fn parse(buf: &'a [u8]) -> Result<ParseResult<'a>, io::Error> {
         if buf.len() < 5 {
             return Ok(ParseResult::Incomplete { required_size: None });
         }
@@ -161,7 +160,8 @@ impl<'a> Message<'a> {
                     },
                     5 => {
                         if buf.len() != 4 {
-                            return Err("invalid message length".into());
+                            return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                                      "invalid message length"));
                         }
                         let mut salt = [0; 4];
                         salt.copy_from_slice(buf);
@@ -183,7 +183,10 @@ impl<'a> Message<'a> {
                         check_empty!(buf);
                         Message::AuthenticationSspi
                     },
-                    tag => return Err(format!("unknown authentication tag `{}`", tag).into()),
+                    tag => {
+                        return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                                  format!("unknown authentication tag `{}`", tag)));
+                    },
                 }
             }
             b's' => {
@@ -221,7 +224,10 @@ impl<'a> Message<'a> {
                     _p: PhantomData,
                 })
             }
-            tag => return Err(format!("unknown message tag `{}`", tag).into()),
+            tag => {
+                return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                          format!("unknown message tag `{}`", tag)));
+            },
         };
 
         Ok(ParseResult::Complete {
@@ -314,9 +320,9 @@ pub struct ColumnFormats<'a> {
 
 impl<'a> FallibleIterator for ColumnFormats<'a> {
     type Item = u16;
-    type Error = Box<Error>;
+    type Error = io::Error;
 
-    fn next(&mut self) -> Result<Option<u16>, Box<Error>> {
+    fn next(&mut self) -> Result<Option<u16>, io::Error> {
         if self.remaining == 0 {
             check_empty!(self.buf);
             return Ok(None);
@@ -371,9 +377,9 @@ pub struct DataRowValues<'a> {
 
 impl<'a> FallibleIterator for DataRowValues<'a> {
     type Item = Option<&'a [u8]>;
-    type Error = Box<Error>;
+    type Error = io::Error;
 
-    fn next(&mut self) -> Result<Option<Option<&'a [u8]>>, Box<Error>> {
+    fn next(&mut self) -> Result<Option<Option<&'a [u8]>>, io::Error> {
         if self.remaining == 0 {
             check_empty!(self.buf);
             return Ok(None);
@@ -412,9 +418,9 @@ pub struct ErrorFields<'a>(&'a [u8]);
 
 impl<'a> FallibleIterator for ErrorFields<'a> {
     type Item = ErrorField<'a>;
-    type Error = Box<Error>;
+    type Error = io::Error;
 
-    fn next(&mut self) -> Result<Option<ErrorField<'a>>, Box<Error>> {
+    fn next(&mut self) -> Result<Option<ErrorField<'a>>, io::Error> {
         let type_ = try!(self.0.read_u8());
         if type_ == 0 {
             check_empty!(self.0);
@@ -494,9 +500,9 @@ pub struct Parameters<'a> {
 
 impl<'a> FallibleIterator for Parameters<'a> {
     type Item = Oid;
-    type Error = Box<Error>;
+    type Error = io::Error;
 
-    fn next(&mut self) -> Result<Option<Oid>, Box<Error>> {
+    fn next(&mut self) -> Result<Option<Oid>, io::Error> {
         if self.remaining == 0 {
             check_empty!(self.buf);
             return Ok(None);
@@ -559,9 +565,9 @@ pub struct Fields<'a> {
 
 impl<'a> FallibleIterator for Fields<'a> {
     type Item = Field<'a>;
-    type Error = Box<Error>;
+    type Error = io::Error;
 
-    fn next(&mut self) -> Result<Option<Field<'a>>, Box<Error>> {
+    fn next(&mut self) -> Result<Option<Field<'a>>, io::Error> {
         if self.remaining == 0 {
             check_empty!(self.buf);
             return Ok(None);
@@ -629,18 +635,20 @@ impl<'a> Field<'a> {
 }
 
 trait ReadCStr<'a> {
-    fn read_cstr(&mut self) -> Result<&'a str, Box<Error>>;
+    fn read_cstr(&mut self) -> Result<&'a str, io::Error>;
 }
 
 impl<'a> ReadCStr<'a> for &'a [u8] {
-    fn read_cstr(&mut self) -> Result<&'a str, Box<Error>> {
+    fn read_cstr(&mut self) -> Result<&'a str, io::Error> {
         let end = match self.iter().position(|&b| b == 0) {
             Some(end) => end,
             None => {
-                return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "unexpected EOF").into());
+                return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "unexpected EOF"));
             }
         };
-        let s = try!(str::from_utf8(&self[..end]));
+        let s = try!(str::from_utf8(&self[..end]).map_err(|e| {
+            io::Error::new(io::ErrorKind::InvalidInput, e)
+        }));
         *self = &self[end + 1..];
         Ok(s)
     }
