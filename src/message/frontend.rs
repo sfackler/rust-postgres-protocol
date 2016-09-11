@@ -221,7 +221,7 @@ impl Message for SslRequest {
 }
 
 pub struct StartupMessage<'a, T: 'a, U: 'a> {
-    parameters: &'a [(T, U)],
+    pub parameters: &'a [(T, U)],
 }
 
 impl<'a, T, U> Message for StartupMessage<'a, T, U>
