@@ -578,7 +578,7 @@ impl<'a> FallibleIterator for Fields<'a> {
         let table_oid = try!(self.buf.read_u32::<BigEndian>());
         let column_id = try!(self.buf.read_i16::<BigEndian>());
         let type_oid = try!(self.buf.read_u32::<BigEndian>());
-        let type_size = try!(self.buf.read_i32::<BigEndian>());
+        let type_size = try!(self.buf.read_i16::<BigEndian>());
         let type_modifier = try!(self.buf.read_i32::<BigEndian>());
         let format = try!(self.buf.read_i16::<BigEndian>());
 
@@ -599,7 +599,7 @@ pub struct Field<'a> {
     table_oid: Oid,
     column_id: i16,
     type_oid: Oid,
-    type_size: i32,
+    type_size: i16,
     type_modifier: i32,
     format: i16,
 }
@@ -621,7 +621,7 @@ impl<'a> Field<'a> {
         self.type_oid
     }
 
-    pub fn type_size(&self) -> i32 {
+    pub fn type_size(&self) -> i16 {
         self.type_size
     }
 
