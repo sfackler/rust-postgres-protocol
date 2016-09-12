@@ -165,7 +165,6 @@ impl<'a> Message<'a> {
                         }
                         let mut salt = [0; 4];
                         salt.copy_from_slice(buf);
-                        check_empty!(buf);
                         Message::AuthenticationMd55Password(AuthenticationMd5PasswordBody {
                             salt: salt,
                             _p: PhantomData,
