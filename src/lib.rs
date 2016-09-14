@@ -1,8 +1,7 @@
 extern crate byteorder;
 extern crate fallible_iterator;
 
-use byteorder::{WriteBytesExt, BigEndian};
-use std::io::{self, Cursor};
+use std::io;
 
 pub mod message;
 pub mod types;
@@ -27,16 +26,3 @@ macro_rules! from_usize {
 
 from_usize!(u16);
 from_usize!(i32);
-
-fn write_framed<F>(buf: &mut Vec<u8>, f: F) -> io::Result<()>
-    where F: FnOnce(&mut Vec<u8>) -> Result<(), io::Error>
-{
-    let base = buf.len();
-    buf.extend_from_slice(&[0; 4]);
-
-    try!(f(buf));
-
-    let size = try!(i32::from_usize(buf.len() - base));
-    Cursor::new(&mut buf[base..base + 4]).write_i32::<BigEndian>(size).unwrap();
-    Ok(())
-}

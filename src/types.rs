@@ -4,7 +4,7 @@ use std::error::Error;
 use std::io::Cursor;
 use std::str;
 
-use {FromUsize, write_framed};
+use FromUsize;
 
 pub fn bool_to_sql(v: bool, buf: &mut Vec<u8>) {
     buf.push(v as u8);
@@ -116,11 +116,11 @@ pub fn hstore_to_sql<'a, I>(values: I, buf: &mut Vec<u8>) -> Result<(), Box<Erro
     for (key, value) in values {
         count += 1;
 
-        try!(write_framed(buf, |buf| Ok(buf.extend_from_slice(key.as_bytes()))));
+        try!(write_pascal_string(key, buf));
 
         match value {
             Some(value) => {
-                try!(write_framed(buf, |buf| Ok(buf.extend_from_slice(value.as_bytes()))));
+                try!(write_pascal_string(value, buf));
             }
             None => buf.write_i32::<BigEndian>(-1).unwrap(),
         }
@@ -132,9 +132,19 @@ pub fn hstore_to_sql<'a, I>(values: I, buf: &mut Vec<u8>) -> Result<(), Box<Erro
     Ok(())
 }
 
+fn write_pascal_string(s: &str, buf: &mut Vec<u8>) -> Result<(), Box<Error + Sync + Send>> {
+    let size = try!(i32::from_usize(s.len()));
+    buf.write_i32::<BigEndian>(size).unwrap();
+    buf.extend_from_slice(s.as_bytes());
+    Ok(())
+}
+
 pub fn hstore_from_sql<'a>(mut buf: &'a [u8])
                            -> Result<HstoreFromSql<'a>, Box<Error + Sync + Send>> {
     let count = try!(buf.read_i32::<BigEndian>());
+    if count < 0 {
+        return Err("invalid entry count".into());
+    }
 
     Ok(HstoreFromSql {
         remaining: count,
@@ -152,7 +162,7 @@ impl<'a> FallibleIterator for HstoreFromSql<'a> {
     type Error = Box<Error + Sync + Send>;
 
     fn next(&mut self) -> Result<Option<(&'a str, Option<&'a str>)>, Box<Error + Sync + Send>> {
-        if self.remaining <= 0 {
+        if self.remaining == 0 {
             if !self.buf.is_empty() {
                 return Err("invalid buffer size".into());
             }
@@ -180,5 +190,75 @@ impl<'a> FallibleIterator for HstoreFromSql<'a> {
         };
 
         Ok(Some((key, value)))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.remaining as usize;
+        (len, Some(len))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::collections::HashMap;
+    use fallible_iterator::FallibleIterator;
+
+    use super::*;
+
+    #[test]
+    fn bool() {
+        let mut buf = vec![];
+        bool_to_sql(true, &mut buf);
+        assert_eq!(bool_from_sql(&buf).unwrap(), true);
+
+        let mut buf = vec![];
+        bool_to_sql(false, &mut buf);
+        assert_eq!(bool_from_sql(&buf).unwrap(), false);
+    }
+
+    #[test]
+    fn int2() {
+        let mut buf = vec![];
+        int2_to_sql(0x0102, &mut buf);
+        assert_eq!(int2_from_sql(&buf).unwrap(), 0x0102);
+    }
+
+    #[test]
+    fn int4() {
+        let mut buf = vec![];
+        int4_to_sql(0x01020304, &mut buf);
+        assert_eq!(int4_from_sql(&buf).unwrap(), 0x01020304);
+    }
+
+    #[test]
+    fn int8() {
+        let mut buf = vec![];
+        int8_to_sql(0x0102030405060708, &mut buf);
+        assert_eq!(int8_from_sql(&buf).unwrap(), 0x0102030405060708);
+    }
+
+    #[test]
+    fn float4() {
+        let mut buf = vec![];
+        float4_to_sql(10343.95, &mut buf);
+        assert_eq!(float4_from_sql(&buf).unwrap(), 10343.95);
+    }
+
+    #[test]
+    fn float8() {
+        let mut buf = vec![];
+        float8_to_sql(10343.95, &mut buf);
+        assert_eq!(float8_from_sql(&buf).unwrap(), 10343.95);
+    }
+
+    #[test]
+    fn hstore() {
+        let mut map = HashMap::new();
+        map.insert("hello", Some("world"));
+        map.insert("hola", None);
+
+        let mut buf = vec![];
+        hstore_to_sql(map.iter().map(|(&k, &v)| (k, v)), &mut buf).unwrap();
+        assert_eq!(hstore_from_sql(&buf).unwrap().collect::<HashMap<_, _>>().unwrap(), map);
     }
 }
