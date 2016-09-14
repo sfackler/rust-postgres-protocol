@@ -250,6 +250,7 @@ pub fn varbit_from_sql<'a>(mut buf: &'a [u8]) -> Result<Varbit<'a>, Box<Error + 
     })
 }
 
+/// A `VARBIT` value.
 pub struct Varbit<'a> {
     len: usize,
     bytes: &'a [u8],
@@ -265,6 +266,60 @@ impl<'a> Varbit<'a> {
     pub fn bytes(&self) -> &'a [u8] {
         self.bytes
     }
+}
+
+/// Serializes a `TIMESTAMP` or `TIMESTAMPTZ` value.
+///
+/// The value should represent the number of microseconds since midnight, January 1st, 2000.
+pub fn timestamp_to_sql(v: i64, buf: &mut Vec<u8>) {
+    buf.write_i64::<BigEndian>(v).unwrap();
+}
+
+/// Deserializes a `TIMESTAMP` or `TIMESTAMPTZ` value.
+///
+/// The value represents the number of microseconds since midnight, January 1st, 2000.
+pub fn timestamp_from_sql(mut buf: &[u8]) -> Result<i64, Box<Error + Sync + Send>> {
+    let v = try!(buf.read_i64::<BigEndian>());
+    if !buf.is_empty() {
+        return Err("invalid message length".into());
+    }
+    Ok(v)
+}
+
+/// Serializes a `DATE` value.
+///
+/// The value should represent the number of days since January 1st, 2000.
+pub fn date_to_sql(v: i32, buf: &mut Vec<u8>) {
+    buf.write_i32::<BigEndian>(v).unwrap();
+}
+
+/// Deserializes a `DATE` value.
+///
+/// The value represents the number of days since January 1st, 2000.
+pub fn date_from_sql(mut buf: &[u8]) -> Result<i32, Box<Error + Sync + Send>> {
+    let v = try!(buf.read_i32::<BigEndian>());
+    if !buf.is_empty() {
+        return Err("invalid message length".into());
+    }
+    Ok(v)
+}
+
+/// Serializes a `TIME` or `TIMETZ` value.
+///
+/// The value should represent the number of microseconds since midnight.
+pub fn time_to_sql(v: i64, buf: &mut Vec<u8>) {
+    buf.write_i64::<BigEndian>(v).unwrap();
+}
+
+/// Deserializes a `TIME` or `TIMETZ` value.
+///
+/// The value represents the number of microseconds since midnight.
+pub fn time_from_sql(mut buf: &[u8]) -> Result<i64, Box<Error + Sync + Send>> {
+    let v = try!(buf.read_i64::<BigEndian>());
+    if !buf.is_empty() {
+        return Err("invalid message length".into());
+    }
+    Ok(v)
 }
 
 #[cfg(test)]
