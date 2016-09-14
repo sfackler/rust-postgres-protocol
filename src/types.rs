@@ -6,10 +6,12 @@ use std::str;
 
 use FromUsize;
 
+/// Serializes a `BOOL` value.
 pub fn bool_to_sql(v: bool, buf: &mut Vec<u8>) {
     buf.push(v as u8);
 }
 
+/// Deserializes a `BOOL` value.
 pub fn bool_from_sql(buf: &[u8]) -> Result<bool, Box<Error + Sync + Send>> {
     if buf.len() != 1 {
         return Err("invalid buffer size".into());
@@ -18,26 +20,32 @@ pub fn bool_from_sql(buf: &[u8]) -> Result<bool, Box<Error + Sync + Send>> {
     Ok(buf[0] != 0)
 }
 
+/// Serializes a `BYTEA` value.
 pub fn bytea_to_sql(v: &[u8], buf: &mut Vec<u8>) {
     buf.extend_from_slice(v);
 }
 
+/// Deserializes a `BYTEA value.
 pub fn bytea_from_sql(buf: &[u8]) -> &[u8] {
     buf
 }
 
+/// Serializes a `TEXT`, `VARCHAR`, `CHAR(n)`, `NAME`, or `CITEXT` value.
 pub fn text_to_sql(v: &str, buf: &mut Vec<u8>) {
     buf.extend_from_slice(v.as_bytes());
 }
 
+/// Deserializes a `TEXT`, `VARCHAR`, `CHAR(n)`, `NAME`, or `CITEXT` value.
 pub fn text_from_sql(buf: &[u8]) -> Result<&str, Box<Error + Sync + Send>> {
     Ok(try!(str::from_utf8(buf)))
 }
 
+/// Serializes a `"char"` value.
 pub fn char_to_sql(v: i8, buf: &mut Vec<u8>) {
     buf.write_i8(v).unwrap();
 }
 
+/// Deserializes a `"char"` value.
 pub fn char_from_sql(mut buf: &[u8]) -> Result<i8, Box<Error + Sync + Send>> {
     let v = try!(buf.read_i8());
     if !buf.is_empty() {
@@ -46,10 +54,12 @@ pub fn char_from_sql(mut buf: &[u8]) -> Result<i8, Box<Error + Sync + Send>> {
     Ok(v)
 }
 
+/// Serializes an `INT2` value.
 pub fn int2_to_sql(v: i16, buf: &mut Vec<u8>) {
     buf.write_i16::<BigEndian>(v).unwrap();
 }
 
+/// Deserializes an `INT2` value.
 pub fn int2_from_sql(mut buf: &[u8]) -> Result<i16, Box<Error + Sync + Send>> {
     let v = try!(buf.read_i16::<BigEndian>());
     if !buf.is_empty() {
@@ -58,10 +68,12 @@ pub fn int2_from_sql(mut buf: &[u8]) -> Result<i16, Box<Error + Sync + Send>> {
     Ok(v)
 }
 
+/// Serializes an `INT4` value.
 pub fn int4_to_sql(v: i32, buf: &mut Vec<u8>) {
     buf.write_i32::<BigEndian>(v).unwrap();
 }
 
+/// Deserializes an `INT4` value.
 pub fn int4_from_sql(mut buf: &[u8]) -> Result<i32, Box<Error + Sync + Send>> {
     let v = try!(buf.read_i32::<BigEndian>());
     if !buf.is_empty() {
@@ -70,10 +82,12 @@ pub fn int4_from_sql(mut buf: &[u8]) -> Result<i32, Box<Error + Sync + Send>> {
     Ok(v)
 }
 
+/// Serializes an `INT8` value.
 pub fn int8_to_sql(v: i64, buf: &mut Vec<u8>) {
     buf.write_i64::<BigEndian>(v).unwrap();
 }
 
+/// Deserializes an `INT8` value.
 pub fn int8_from_sql(mut buf: &[u8]) -> Result<i64, Box<Error + Sync + Send>> {
     let v = try!(buf.read_i64::<BigEndian>());
     if !buf.is_empty() {
@@ -82,10 +96,12 @@ pub fn int8_from_sql(mut buf: &[u8]) -> Result<i64, Box<Error + Sync + Send>> {
     Ok(v)
 }
 
+/// Serializes a `FLOAT4` value.
 pub fn float4_to_sql(v: f32, buf: &mut Vec<u8>) {
     buf.write_f32::<BigEndian>(v).unwrap();
 }
 
+/// Deserializes a `FLOAT4` value.
 pub fn float4_from_sql(mut buf: &[u8]) -> Result<f32, Box<Error + Sync + Send>> {
     let v = try!(buf.read_f32::<BigEndian>());
     if !buf.is_empty() {
@@ -94,10 +110,12 @@ pub fn float4_from_sql(mut buf: &[u8]) -> Result<f32, Box<Error + Sync + Send>> 
     Ok(v)
 }
 
+/// Serializes a `FLOAT8` value.
 pub fn float8_to_sql(v: f64, buf: &mut Vec<u8>) {
     buf.write_f64::<BigEndian>(v).unwrap();
 }
 
+/// Deserializes a `FLOAT8` value.
 pub fn float8_from_sql(mut buf: &[u8]) -> Result<f64, Box<Error + Sync + Send>> {
     let v = try!(buf.read_f64::<BigEndian>());
     if !buf.is_empty() {
@@ -106,6 +124,7 @@ pub fn float8_from_sql(mut buf: &[u8]) -> Result<f64, Box<Error + Sync + Send>> 
     Ok(v)
 }
 
+/// Serializes an `HSTORE` value.
 pub fn hstore_to_sql<'a, I>(values: I, buf: &mut Vec<u8>) -> Result<(), Box<Error + Sync + Send>>
     where I: IntoIterator<Item = (&'a str, Option<&'a str>)>
 {
@@ -139,6 +158,7 @@ fn write_pascal_string(s: &str, buf: &mut Vec<u8>) -> Result<(), Box<Error + Syn
     Ok(())
 }
 
+/// Deserializes an `HSTORE` value.
 pub fn hstore_from_sql<'a>(mut buf: &'a [u8])
                            -> Result<HstoreFromSql<'a>, Box<Error + Sync + Send>> {
     let count = try!(buf.read_i32::<BigEndian>());
@@ -152,6 +172,7 @@ pub fn hstore_from_sql<'a>(mut buf: &'a [u8])
     })
 }
 
+/// A fallible iterator over `HSTORE` entries.
 pub struct HstoreFromSql<'a> {
     remaining: i32,
     buf: &'a [u8],
@@ -195,6 +216,54 @@ impl<'a> FallibleIterator for HstoreFromSql<'a> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.remaining as usize;
         (len, Some(len))
+    }
+}
+
+/// Serializes a `VARBIT` value.
+pub fn varbit_to_sql<I>(len: usize, v: I, buf: &mut Vec<u8>) -> Result<(), Box<Error + Sync + Send>>
+    where I: Iterator<Item = u8>
+{
+    let len = try!(i32::from_usize(len));
+    buf.write_i32::<BigEndian>(len).unwrap();
+
+    for byte in v {
+        buf.push(byte);
+    }
+
+    Ok(())
+}
+
+/// Deserializes a `VARBIT` value.
+pub fn varbit_from_sql<'a>(mut buf: &'a [u8]) -> Result<Varbit<'a>, Box<Error + Sync + Send>> {
+    let len = try!(buf.read_i32::<BigEndian>());
+    if len < 0 {
+        return Err("invalid varbit length".into());
+    }
+    let bytes = (len as usize + 7) / 8;
+    if buf.len() != bytes {
+        return Err("invalid message length".into());
+    }
+
+    Ok(Varbit {
+        len: len as usize,
+        bytes: buf,
+    })
+}
+
+pub struct Varbit<'a> {
+    len: usize,
+    bytes: &'a [u8],
+}
+
+impl<'a> Varbit<'a> {
+    /// Returns the number of bits.
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    /// Returns the bits as a slice of bytes.
+    pub fn bytes(&self) -> &'a [u8] {
+        self.bytes
     }
 }
 
@@ -260,5 +329,17 @@ mod test {
         let mut buf = vec![];
         hstore_to_sql(map.iter().map(|(&k, &v)| (k, v)), &mut buf).unwrap();
         assert_eq!(hstore_from_sql(&buf).unwrap().collect::<HashMap<_, _>>().unwrap(), map);
+    }
+
+    #[test]
+    fn varbit() {
+        let len = 12;
+        let bits = [0b0010_1011, 0b0000_1111];
+
+        let mut buf = vec![];
+        varbit_to_sql(len, bits.iter().cloned(), &mut buf).unwrap();
+        let out = varbit_from_sql(&buf).unwrap();
+        assert_eq!(out.len(), len);
+        assert_eq!(out.bytes(), bits);
     }
 }
