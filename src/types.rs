@@ -337,6 +337,21 @@ pub fn macaddr_from_sql(buf: &[u8]) -> Result<[u8; 6], Box<Error + Sync + Send>>
     Ok(out)
 }
 
+/// Serializes a `UUID` value.
+pub fn uuid_to_sql(v: [u8; 16], buf: &mut Vec<u8>) {
+    buf.extend_from_slice(&v);
+}
+
+/// Deserializes a `UUID` value.
+pub fn uuid_from_sql(buf: &[u8]) -> Result<[u8; 16], Box<Error + Sync + Send>> {
+    if buf.len() != 16 {
+        return Err("invalid message length".into());
+    }
+    let mut out = [0; 16];
+    out.copy_from_slice(buf);
+    Ok(out)
+}
+
 #[cfg(test)]
 mod test {
     use std::collections::HashMap;
