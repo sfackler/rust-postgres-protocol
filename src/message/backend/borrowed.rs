@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 use std::str;
 
 use message::Oid;
+use message::backend::{self, ParseResult, RowDescriptionEntry};
 
 macro_rules! check_empty {
     ($buf:expr) => {
@@ -47,7 +48,7 @@ pub enum Message<'a> {
 }
 
 impl<'a> Message<'a> {
-    pub fn parse(buf: &'a [u8]) -> Result<ParseResult<'a>, io::Error> {
+    pub fn parse(buf: &'a [u8]) -> io::Result<ParseResult<Message<'a>>> {
         if buf.len() < 5 {
             return Ok(ParseResult::Incomplete { required_size: None });
         }
@@ -234,16 +235,107 @@ impl<'a> Message<'a> {
             consumed: len,
         })
     }
-}
 
-pub enum ParseResult<'a> {
-    Complete {
-        message: Message<'a>,
-        consumed: usize,
-    },
-    Incomplete {
-        required_size: Option<usize>,
-    },
+    pub fn to_owned(&self) -> io::Result<backend::Message> {
+        let ret = match *self {
+            Message::AuthenticationCleartextPassword => {
+                backend::Message::AuthenticationCleartextPassword
+            }
+            Message::AuthenticationGss => backend::Message::AuthenticationGSS,
+            Message::AuthenticationKerberosV5 => backend::Message::AuthenticationKerberosV5,
+            Message::AuthenticationMd55Password(ref body) => {
+                backend::Message::AuthenticationMD5Password { salt: body.salt() }
+            }
+            Message::AuthenticationOk => backend::Message::AuthenticationOk,
+            Message::AuthenticationScmCredential => backend::Message::AuthenticationSCMCredential,
+            Message::AuthenticationSspi => backend::Message::AuthenticationSSPI,
+            Message::BackendKeyData(ref body) => {
+                backend::Message::BackendKeyData {
+                    process_id: body.process_id(),
+                    secret_key: body.secret_key(),
+                }
+            }
+            Message::BindComplete => backend::Message::BindComplete,
+            Message::CloseComplete => backend::Message::CloseComplete,
+            Message::CommandComplete(ref body) => {
+                backend::Message::CommandComplete { tag: body.tag().to_owned() }
+            }
+            Message::CopyData(ref body) => backend::Message::CopyData { data: body.data().to_owned() },
+            Message::CopyDone => backend::Message::CopyDone,
+            Message::CopyInResponse(ref body) => {
+                backend::Message::CopyInResponse {
+                    format: body.format(),
+                    column_formats: try!(body.column_formats().collect()),
+                }
+            }
+            Message::CopyOutResponse(ref body) => {
+                backend::Message::CopyOutResponse {
+                    format: body.format(),
+                    column_formats: try!(body.column_formats().collect()),
+                }
+            }
+            Message::DataRow(ref body) => {
+                backend::Message::DataRow {
+                    row: try!(body.values().map(|r| r.map(|d| d.to_owned())).collect()),
+                }
+            }
+            Message::EmptyQueryResponse => backend::Message::EmptyQueryResponse,
+            Message::ErrorResponse(ref body) => {
+                backend::Message::ErrorResponse {
+                    fields: try!(body.fields()
+                        .map(|f| (f.type_(), f.value().to_owned()))
+                        .collect()),
+                }
+            }
+            Message::NoData => backend::Message::NoData,
+            Message::NoticeResponse(ref body) => {
+                backend::Message::NoticeResponse {
+                    fields: try!(body.fields()
+                        .map(|f| (f.type_(), f.value().to_owned()))
+                        .collect()),
+                }
+            }
+            Message::NotificationResponse(ref body) => {
+                backend::Message::NotificationResponse {
+                    process_id: body.process_id(),
+                    channel: body.channel().to_owned(),
+                    payload: body.message().to_owned(),
+                }
+            }
+            Message::ParameterDescription(ref body) => {
+                backend::Message::ParameterDescription { types: try!(body.parameters().collect()) }
+            }
+            Message::ParameterStatus(ref body) => {
+                backend::Message::ParameterStatus {
+                    parameter: body.name().to_owned(),
+                    value: body.value().to_owned(),
+                }
+            }
+            Message::ParseComplete => backend::Message::ParseComplete,
+            Message::PortalSuspended => backend::Message::PortalSuspended,
+            Message::ReadyForQuery(ref body) => {
+                backend::Message::ReadyForQuery { state: body.status() }
+            },
+            Message::RowDescription(ref body) => {
+                let fields = body.fields()
+                    .map(|f| {
+                        RowDescriptionEntry {
+                            name: f.name().to_owned(),
+                            table_oid: f.table_oid(),
+                            column_id: f.column_id(),
+                            type_oid: f.type_oid(),
+                            type_size: f.type_size(),
+                            type_modifier: f.type_modifier(),
+                            format: f.format(),
+                        }
+                    });
+                backend::Message::RowDescription { descriptions: try!(fields.collect()) }
+            }
+            Message::__ForExtensibility => backend::Message::__ForExtensibility,
+        };
+
+        Ok(ret)
+    }
 }
 
 pub struct AuthenticationMd5PasswordBody<'a> {
