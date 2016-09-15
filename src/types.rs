@@ -4,7 +4,7 @@ use std::error::Error;
 use std::io::Cursor;
 use std::str;
 
-use FromUsize;
+use {Oid, FromUsize};
 
 /// Serializes a `BOOL` value.
 pub fn bool_to_sql(v: bool, buf: &mut Vec<u8>) {
@@ -352,6 +352,192 @@ pub fn uuid_from_sql(buf: &[u8]) -> Result<[u8; 16], Box<Error + Sync + Send>> {
     Ok(out)
 }
 
+/// Serializes an array value.
+pub fn array_to_sql<T, I, J, F>(dimensions: I,
+                                has_nulls: bool,
+                                element_type: Oid,
+                                elements: J,
+                                mut serializer: F,
+                                buf: &mut Vec<u8>)
+                                -> Result<(), Box<Error + Sync + Send>>
+    where I: IntoIterator<Item = ArrayDimension>,
+          J: IntoIterator<Item = Option<T>>,
+          F: FnMut(T, &mut Vec<u8>) -> Result<(), Box<Error + Sync + Send>>
+{
+    let dimensions_idx = buf.len();
+    buf.extend_from_slice(&[0; 4]);
+    buf.write_i32::<BigEndian>(has_nulls as i32).unwrap();
+    buf.write_u32::<BigEndian>(element_type).unwrap();
+
+    let mut num_dimensions = 0;
+    for dimension in dimensions {
+        num_dimensions += 1;
+        buf.write_i32::<BigEndian>(dimension.len).unwrap();
+        buf.write_i32::<BigEndian>(dimension.lower_bound).unwrap();
+    }
+
+    let num_dimensions = try!(i32::from_usize(num_dimensions));
+    Cursor::new(&mut buf[dimensions_idx..dimensions_idx + 4])
+        .write_i32::<BigEndian>(num_dimensions).unwrap();
+
+    for element in elements {
+        match element {
+            Some(element) => try!(write_framed(buf, |buf| serializer(element, buf))),
+            None => try!(buf.write_i32::<BigEndian>(-1)),
+        }
+    }
+
+    Ok(())
+}
+
+fn write_framed<F>(buf: &mut Vec<u8>, f: F) -> Result<(), Box<Error + Sync + Send>>
+    where F: FnOnce(&mut Vec<u8>) -> Result<(), Box<Error + Sync + Send>>
+{
+    let base = buf.len();
+    buf.extend_from_slice(&[0; 4]);
+    try!(f(buf));
+    let size = try!(i32::from_usize(buf.len() - base - 4));
+    Cursor::new(&mut buf[base..base + 4]).write_i32::<BigEndian>(size).unwrap();
+    Ok(())
+}
+
+/// Deserializes an array value.
+pub fn array_from_sql<'a>(mut buf: &'a [u8]) -> Result<Array<'a>, Box<Error + Sync + Send>> {
+    let dimensions = try!(buf.read_i32::<BigEndian>());
+    if dimensions < 0 {
+        return Err("invalid dimension count".into());
+    }
+    let has_nulls = try!(buf.read_i32::<BigEndian>()) != 0;
+    let element_type = try!(buf.read_u32::<BigEndian>());
+
+    let mut r = buf;
+    let mut elements = 1i32;
+    for _ in 0..dimensions {
+        let len = try!(r.read_i32::<BigEndian>());
+        if len < 0 {
+            return Err("invalid dimension size".into());
+        }
+        let _lower_bound = try!(r.read_i32::<BigEndian>());
+        elements = match elements.checked_mul(len) {
+            Some(elements) => elements,
+            None => return Err("too many array elements".into()),
+        };
+    }
+
+    if dimensions == 0 {
+        elements = 0;
+    }
+
+    Ok(Array {
+        dimensions: dimensions,
+        has_nulls: has_nulls,
+        element_type: element_type,
+        elements: elements,
+        buf: buf,
+    })
+}
+
+pub struct Array<'a> {
+    dimensions: i32,
+    has_nulls: bool,
+    element_type: Oid,
+    elements: i32,
+    buf: &'a [u8],
+}
+
+impl<'a> Array<'a> {
+    pub fn has_nulls(&self) -> bool {
+        self.has_nulls
+    }
+
+    pub fn element_type(&self) -> Oid {
+        self.element_type
+    }
+
+    pub fn dimensions(&self) -> ArrayDimensions<'a> {
+        ArrayDimensions(&self.buf[..self.dimensions as usize * 8])
+    }
+
+    pub fn values(&self) -> ArrayValues<'a> {
+        ArrayValues {
+            remaining: self.elements,
+            buf: &self.buf[self.dimensions as usize * 8..],
+        }
+    }
+}
+
+pub struct ArrayDimensions<'a>(&'a [u8]);
+
+impl<'a> FallibleIterator for ArrayDimensions<'a> {
+    type Item = ArrayDimension;
+    type Error = Box<Error + Sync + Send>;
+
+    fn next(&mut self) -> Result<Option<ArrayDimension>, Box<Error + Sync + Send>> {
+        if self.0.is_empty() {
+            return Ok(None);
+        }
+
+        let len = try!(self.0.read_i32::<BigEndian>());
+        let lower_bound = try!(self.0.read_i32::<BigEndian>());
+
+        Ok(Some(ArrayDimension {
+            len: len,
+            lower_bound: lower_bound,
+        }))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.0.len() / 8;
+        (len, Some(len))
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ArrayDimension {
+    pub len: i32,
+    pub lower_bound: i32,
+}
+
+pub struct ArrayValues<'a> {
+    remaining: i32,
+    buf: &'a [u8],
+}
+
+impl<'a> FallibleIterator for ArrayValues<'a> {
+    type Item = Option<&'a [u8]>;
+    type Error = Box<Error + Sync + Send>;
+
+    fn next(&mut self) -> Result<Option<Option<&'a [u8]>>, Box<Error + Sync + Send>> {
+        if self.remaining == 0 {
+            if !self.buf.is_empty() {
+                return Err("invalid message length".into());
+            }
+            return Ok(None);
+        }
+        self.remaining -= 1;
+
+        let len = try!(self.buf.read_i32::<BigEndian>());
+        let val = if len < 0 {
+            None
+        } else {
+            if self.buf.len() < len as usize {
+                return Err("invalid value length".into());
+            }
+
+            let (val, buf) = self.buf.split_at(len as usize);
+            self.buf = buf;
+            Some(val)
+        };
+
+        Ok(Some(val))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.remaining as usize;
+        (len, Some(len))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::collections::HashMap;
@@ -426,5 +612,34 @@ mod test {
         let out = varbit_from_sql(&buf).unwrap();
         assert_eq!(out.len(), len);
         assert_eq!(out.bytes(), bits);
+    }
+
+    #[test]
+    fn array() {
+        let dimensions = [
+            ArrayDimension {
+                len: 1,
+                lower_bound: 10,
+            },
+            ArrayDimension {
+                len: 2,
+                lower_bound: 0,
+            }
+        ];
+        let values = [None, Some(&b"hello"[..])];
+
+        let mut buf = vec![];
+        array_to_sql(dimensions.iter().cloned(),
+                     true,
+                     10,
+                     values.iter().cloned(),
+                     |v, buf| Ok(buf.extend_from_slice(v)),
+                     &mut buf).unwrap();
+
+        let array = array_from_sql(&buf).unwrap();
+        assert_eq!(array.has_nulls(), true);
+        assert_eq!(array.element_type(), 10);
+        assert_eq!(array.dimensions().collect::<Vec<_>>().unwrap(), dimensions);
+        assert_eq!(array.values().collect::<Vec<_>>().unwrap(), values);
     }
 }

@@ -1,8 +1,7 @@
 use byteorder::{WriteBytesExt, BigEndian};
 use std::io::{self, Cursor};
 
-use FromUsize;
-use message::Oid;
+use {Oid, FromUsize};
 
 pub trait Message {
     fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error>;

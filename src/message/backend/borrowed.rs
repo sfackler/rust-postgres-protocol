@@ -4,7 +4,7 @@ use std::io;
 use std::marker::PhantomData;
 use std::str;
 
-use message::Oid;
+use Oid;
 use message::backend::{self, ParseResult, RowDescriptionEntry};
 
 macro_rules! check_empty {

@@ -6,6 +6,8 @@ use std::io;
 pub mod message;
 pub mod types;
 
+pub type Oid = u32;
+
 trait FromUsize: Sized {
     fn from_usize(x: usize) -> Result<Self, io::Error>;
 }

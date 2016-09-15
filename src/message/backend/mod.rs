@@ -1,6 +1,6 @@
 use std::io;
 
-use message::Oid;
+use Oid;
 
 pub mod borrowed;
 
