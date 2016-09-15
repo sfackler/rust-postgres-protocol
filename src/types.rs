@@ -375,8 +375,8 @@ pub fn array_to_sql<T, I, J, F>(dimensions: I,
                                 buf: &mut Vec<u8>)
                                 -> Result<(), Box<Error + Sync + Send>>
     where I: IntoIterator<Item = ArrayDimension>,
-          J: IntoIterator<Item = Option<T>>,
-          F: FnMut(T, &mut Vec<u8>) -> Result<(), Box<Error + Sync + Send>>
+          J: IntoIterator<Item = T>,
+          F: FnMut(T, &mut Vec<u8>) -> Result<IsNull, Box<Error + Sync + Send>>
 {
     let dimensions_idx = buf.len();
     buf.extend_from_slice(&[0; 4]);
@@ -395,24 +395,25 @@ pub fn array_to_sql<T, I, J, F>(dimensions: I,
         .write_i32::<BigEndian>(num_dimensions).unwrap();
 
     for element in elements {
-        match element {
-            Some(element) => try!(write_framed(buf, |buf| serializer(element, buf))),
-            None => try!(buf.write_i32::<BigEndian>(-1)),
-        }
+        let base = buf.len();
+        buf.extend_from_slice(&[0; 4]);
+        let size = match try!(serializer(element, buf)) {
+            IsNull::No => try!(i32::from_usize(buf.len() - base - 4)),
+            IsNull::Yes => -1,
+        };
+        Cursor::new(&mut buf[base..base + 4]).write_i32::<BigEndian>(size).unwrap();
     }
 
     Ok(())
 }
 
-fn write_framed<F>(buf: &mut Vec<u8>, f: F) -> Result<(), Box<Error + Sync + Send>>
-    where F: FnOnce(&mut Vec<u8>) -> Result<(), Box<Error + Sync + Send>>
-{
-    let base = buf.len();
-    buf.extend_from_slice(&[0; 4]);
-    try!(f(buf));
-    let size = try!(i32::from_usize(buf.len() - base - 4));
-    Cursor::new(&mut buf[base..base + 4]).write_i32::<BigEndian>(size).unwrap();
-    Ok(())
+/// An enum indicating if a value is `NULL` or not.
+pub enum IsNull {
+    /// The value is `NULL`.
+    Yes,
+
+    /// The value is not `NULL`.
+    No,
 }
 
 /// Deserializes an array value.
@@ -647,7 +648,15 @@ mod test {
                      true,
                      10,
                      values.iter().cloned(),
-                     |v, buf| Ok(buf.extend_from_slice(v)),
+                     |v, buf| {
+                         match v {
+                             Some(v) => {
+                                 buf.extend_from_slice(v);
+                                 Ok(IsNull::No)
+                             }
+                             None => Ok(IsNull::Yes),
+                         }
+                     },
                      &mut buf).unwrap();
 
         let array = array_from_sql(&buf).unwrap();
