@@ -82,6 +82,20 @@ pub fn int4_from_sql(mut buf: &[u8]) -> Result<i32, Box<Error + Sync + Send>> {
     Ok(v)
 }
 
+/// Serializes an `OID` value.
+pub fn oid_to_sql(v: Oid, buf: &mut Vec<u8>) {
+    buf.write_u32::<BigEndian>(v).unwrap();
+}
+
+/// Deserializes an `OID` value.
+pub fn oid_from_sql(mut buf: &[u8]) -> Result<Oid, Box<Error + Sync + Send>> {
+    let v = try!(buf.read_u32::<BigEndian>());
+    if !buf.is_empty() {
+        return Err("invalid buffer size".into());
+    }
+    Ok(v)
+}
+
 /// Serializes an `INT8` value.
 pub fn int8_to_sql(v: i64, buf: &mut Vec<u8>) {
     buf.write_i64::<BigEndian>(v).unwrap();
