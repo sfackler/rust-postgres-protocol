@@ -174,25 +174,25 @@ fn write_pascal_string(s: &str, buf: &mut Vec<u8>) -> Result<(), Box<Error + Syn
 
 /// Deserializes an `HSTORE` value.
 pub fn hstore_from_sql<'a>(mut buf: &'a [u8])
-                           -> Result<HstoreFromSql<'a>, Box<Error + Sync + Send>> {
+                           -> Result<HstoreEntries<'a>, Box<Error + Sync + Send>> {
     let count = try!(buf.read_i32::<BigEndian>());
     if count < 0 {
         return Err("invalid entry count".into());
     }
 
-    Ok(HstoreFromSql {
+    Ok(HstoreEntries {
         remaining: count,
         buf: buf,
     })
 }
 
 /// A fallible iterator over `HSTORE` entries.
-pub struct HstoreFromSql<'a> {
+pub struct HstoreEntries<'a> {
     remaining: i32,
     buf: &'a [u8],
 }
 
-impl<'a> FallibleIterator for HstoreFromSql<'a> {
+impl<'a> FallibleIterator for HstoreEntries<'a> {
     type Item = (&'a str, Option<&'a str>);
     type Error = Box<Error + Sync + Send>;
 
