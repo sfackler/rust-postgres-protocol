@@ -6,3 +6,6 @@ authors = ["Steven Fackler <sfackler@gmail.com>"]
 [dependencies]
 byteorder = "0.5"
 fallible-iterator = "0.1"
+hex = "0.2"
+md5 = "0.2"
+

@@ -1,8 +1,11 @@
 extern crate byteorder;
 extern crate fallible_iterator;
+extern crate hex;
+extern crate md5;
 
 use std::io;
 
+pub mod authentication;
 pub mod message;
 pub mod types;
 
