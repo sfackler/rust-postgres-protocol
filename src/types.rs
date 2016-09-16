@@ -233,7 +233,7 @@ impl<'a> FallibleIterator for HstoreEntries<'a> {
     }
 }
 
-/// Serializes a `VARBIT` value.
+/// Serializes a `VARBIT` or `BIT` value.
 pub fn varbit_to_sql<I>(len: usize, v: I, buf: &mut Vec<u8>) -> Result<(), Box<Error + Sync + Send>>
     where I: Iterator<Item = u8>
 {
@@ -247,7 +247,7 @@ pub fn varbit_to_sql<I>(len: usize, v: I, buf: &mut Vec<u8>) -> Result<(), Box<E
     Ok(())
 }
 
-/// Deserializes a `VARBIT` value.
+/// Deserializes a `VARBIT` or `BIT` value.
 pub fn varbit_from_sql<'a>(mut buf: &'a [u8]) -> Result<Varbit<'a>, Box<Error + Sync + Send>> {
     let len = try!(buf.read_i32::<BigEndian>());
     if len < 0 {
