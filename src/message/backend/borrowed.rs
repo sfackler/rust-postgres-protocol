@@ -19,6 +19,7 @@ macro_rules! check_empty {
     }
 }
 
+/// An enum representing Postgres backend messages.
 pub enum Message<'a> {
     AuthenticationCleartextPassword,
     AuthenticationGss,
