@@ -67,49 +67,43 @@ impl<'a> Message<'a> {
             b'1' => {
                 check_empty!(buf);
                 Message::ParseComplete
-            },
+            }
             b'2' => {
                 check_empty!(buf);
                 Message::BindComplete
-            },
+            }
             b'3' => {
                 check_empty!(buf);
                 Message::CloseComplete
-            },
+            }
             b'A' => {
                 let process_id = try!(buf.read_i32::<BigEndian>());
                 let channel = try!(buf.read_cstr());
                 let message = try!(buf.read_cstr());
                 check_empty!(buf);
-                Message::NotificationResponse(NotificationResponseBody{
+                Message::NotificationResponse(NotificationResponseBody {
                     process_id: process_id,
                     channel: channel,
                     message: message,
                 })
-            },
+            }
             b'c' => {
                 check_empty!(buf);
                 Message::CopyDone
-            },
+            }
             b'C' => {
                 let tag = try!(buf.read_cstr());
                 check_empty!(buf);
-                Message::CommandComplete(CommandCompleteBody {
-                    tag: tag,
-                })
-            },
-            b'd' => {
-                Message::CopyData(CopyDataBody {
-                    data: buf,
-                })
-            },
+                Message::CommandComplete(CommandCompleteBody { tag: tag })
+            }
+            b'd' => Message::CopyData(CopyDataBody { data: buf }),
             b'D' => {
                 let len = try!(buf.read_u16::<BigEndian>());
                 Message::DataRow(DataRowBody {
                     len: len,
                     buf: buf,
                 })
-            },
+            }
             b'E' => Message::ErrorResponse(ErrorResponseBody(buf)),
             b'G' => {
                 let format = try!(buf.read_u8());
@@ -119,7 +113,7 @@ impl<'a> Message<'a> {
                     len: len,
                     buf: buf,
                 })
-            },
+            }
             b'H' => {
                 let format = try!(buf.read_u8());
                 let len = try!(buf.read_u16::<BigEndian>());
@@ -128,7 +122,7 @@ impl<'a> Message<'a> {
                     len: len,
                     buf: buf,
                 })
-            },
+            }
             b'I' => Message::EmptyQueryResponse,
             b'K' => {
                 let process_id = try!(buf.read_i32::<BigEndian>());
@@ -139,26 +133,26 @@ impl<'a> Message<'a> {
                     secret_key: secret_key,
                     _p: PhantomData,
                 })
-            },
+            }
             b'n' => {
                 check_empty!(buf);
                 Message::NoData
-            },
+            }
             b'N' => Message::NoticeResponse(NoticeResponseBody(buf)),
             b'R' => {
                 match try!(buf.read_i32::<BigEndian>()) {
                     0 => {
                         check_empty!(buf);
                         Message::AuthenticationOk
-                    },
+                    }
                     2 => {
                         check_empty!(buf);
                         Message::AuthenticationKerberosV5
-                    },
+                    }
                     3 => {
                         check_empty!(buf);
                         Message::AuthenticationCleartextPassword
-                    },
+                    }
                     5 => {
                         if buf.len() != 4 {
                             return Err(io::Error::new(io::ErrorKind::InvalidInput,
@@ -170,29 +164,29 @@ impl<'a> Message<'a> {
                             salt: salt,
                             _p: PhantomData,
                         })
-                    },
+                    }
                     6 => {
                         check_empty!(buf);
                         Message::AuthenticationScmCredential
-                    },
+                    }
                     7 => {
                         check_empty!(buf);
                         Message::AuthenticationGss
-                    },
+                    }
                     9 => {
                         check_empty!(buf);
                         Message::AuthenticationSspi
-                    },
+                    }
                     tag => {
                         return Err(io::Error::new(io::ErrorKind::InvalidInput,
                                                   format!("unknown authentication tag `{}`", tag)));
-                    },
+                    }
                 }
             }
             b's' => {
                 check_empty!(buf);
                 Message::PortalSuspended
-            },
+            }
             b'S' => {
                 let name = try!(buf.read_cstr());
                 let value = try!(buf.read_cstr());
@@ -201,21 +195,21 @@ impl<'a> Message<'a> {
                     name: name,
                     value: value,
                 })
-            },
+            }
             b't' => {
                 let len = try!(buf.read_u16::<BigEndian>());
                 Message::ParameterDescription(ParameterDescriptionBody {
                     len: len,
                     buf: buf,
                 })
-            },
+            }
             b'T' => {
                 let len = try!(buf.read_u16::<BigEndian>());
                 Message::RowDescription(RowDescriptionBody {
                     len: len,
                     buf: buf,
                 })
-            },
+            }
             b'Z' => {
                 let status = try!(buf.read_u8());
                 check_empty!(buf);
@@ -227,7 +221,7 @@ impl<'a> Message<'a> {
             tag => {
                 return Err(io::Error::new(io::ErrorKind::InvalidInput,
                                           format!("unknown message tag `{}`", tag)));
-            },
+            }
         };
 
         Ok(ParseResult::Complete {
@@ -260,7 +254,9 @@ impl<'a> Message<'a> {
             Message::CommandComplete(ref body) => {
                 backend::Message::CommandComplete { tag: body.tag().to_owned() }
             }
-            Message::CopyData(ref body) => backend::Message::CopyData { data: body.data().to_owned() },
+            Message::CopyData(ref body) => {
+                backend::Message::CopyData { data: body.data().to_owned() }
+            }
             Message::CopyDone => backend::Message::CopyDone,
             Message::CopyInResponse(ref body) => {
                 backend::Message::CopyInResponse {
@@ -315,7 +311,7 @@ impl<'a> Message<'a> {
             Message::PortalSuspended => backend::Message::PortalSuspended,
             Message::ReadyForQuery(ref body) => {
                 backend::Message::ReadyForQuery { state: body.status() }
-            },
+            }
             Message::RowDescription(ref body) => {
                 let fields = body.fields()
                     .map(|f| {
@@ -737,9 +733,8 @@ impl<'a> ReadCStr<'a> for &'a [u8] {
                 return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "unexpected EOF"));
             }
         };
-        let s = try!(str::from_utf8(&self[..end]).map_err(|e| {
-            io::Error::new(io::ErrorKind::InvalidInput, e)
-        }));
+        let s = try!(str::from_utf8(&self[..end])
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e)));
         *self = &self[end + 1..];
         Ok(s)
     }

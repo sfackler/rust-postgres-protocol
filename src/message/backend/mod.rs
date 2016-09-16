@@ -56,9 +56,7 @@ impl Message {
                 })
             }
             Ok(ParseResult::Incomplete { required_size }) => {
-                Ok(ParseResult::Incomplete {
-                    required_size: required_size
-                })
+                Ok(ParseResult::Incomplete { required_size: required_size })
             }
             Err(e) => Err(e),
         }
@@ -66,13 +64,8 @@ impl Message {
 }
 
 pub enum ParseResult<T> {
-    Complete {
-        message: T,
-        consumed: usize,
-    },
-    Incomplete {
-        required_size: Option<usize>,
-    },
+    Complete { message: T, consumed: usize },
+    Incomplete { required_size: Option<usize> },
 }
 
 pub struct RowDescriptionEntry {

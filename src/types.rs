@@ -392,7 +392,8 @@ pub fn array_to_sql<T, I, J, F>(dimensions: I,
 
     let num_dimensions = try!(i32::from_usize(num_dimensions));
     Cursor::new(&mut buf[dimensions_idx..dimensions_idx + 4])
-        .write_i32::<BigEndian>(num_dimensions).unwrap();
+        .write_i32::<BigEndian>(num_dimensions)
+        .unwrap();
 
     for element in elements {
         let base = buf.len();
@@ -614,7 +615,8 @@ mod test {
 
         let mut buf = vec![];
         hstore_to_sql(map.iter().map(|(&k, &v)| (k, v)), &mut buf).unwrap();
-        assert_eq!(hstore_from_sql(&buf).unwrap().collect::<HashMap<_, _>>().unwrap(), map);
+        assert_eq!(hstore_from_sql(&buf).unwrap().collect::<HashMap<_, _>>().unwrap(),
+                   map);
     }
 
     #[test]
@@ -631,16 +633,14 @@ mod test {
 
     #[test]
     fn array() {
-        let dimensions = [
-            ArrayDimension {
-                len: 1,
-                lower_bound: 10,
-            },
-            ArrayDimension {
-                len: 2,
-                lower_bound: 0,
-            }
-        ];
+        let dimensions = [ArrayDimension {
+                              len: 1,
+                              lower_bound: 10,
+                          },
+                          ArrayDimension {
+                              len: 2,
+                              lower_bound: 0,
+                          }];
         let values = [None, Some(&b"hello"[..])];
 
         let mut buf = vec![];
@@ -649,15 +649,16 @@ mod test {
                      10,
                      values.iter().cloned(),
                      |v, buf| {
-                         match v {
-                             Some(v) => {
-                                 buf.extend_from_slice(v);
-                                 Ok(IsNull::No)
-                             }
-                             None => Ok(IsNull::Yes),
-                         }
-                     },
-                     &mut buf).unwrap();
+            match v {
+                Some(v) => {
+                    buf.extend_from_slice(v);
+                    Ok(IsNull::No)
+                }
+                None => Ok(IsNull::Yes),
+            }
+        },
+                     &mut buf)
+            .unwrap();
 
         let array = array_from_sql(&buf).unwrap();
         assert_eq!(array.has_nulls(), true);
