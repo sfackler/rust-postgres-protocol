@@ -1,9 +1,13 @@
+//! Backend message deserialization.
+#![allow(missing_docs)]
+
 use std::io;
 
 use Oid;
 
 pub mod borrowed;
 
+/// An enum representing Postgres backend messages.
 pub enum Message {
     AuthenticationCleartextPassword,
     AuthenticationGSS,
@@ -47,6 +51,7 @@ pub enum Message {
 }
 
 impl Message {
+    /// Attempts to deserialize a backend message from the buffer.
     pub fn parse(buf: &[u8]) -> io::Result<ParseResult<Message>> {
         match borrowed::Message::parse(buf) {
             Ok(ParseResult::Complete { message, consumed }) => {
@@ -63,9 +68,23 @@ impl Message {
     }
 }
 
+/// The result of an attempted parse.
 pub enum ParseResult<T> {
-    Complete { message: T, consumed: usize },
-    Incomplete { required_size: Option<usize> },
+    /// A message was successfully parsed.
+    Complete {
+        /// The message.
+        message: T,
+        /// The number of bytes of the input buffer consumed to parse this message.
+        consumed: usize
+    },
+    /// The buffer did not contain a full message.
+    Incomplete {
+        /// The number of total bytes required to parse a message, if known.
+        ///
+        /// This value is present iff the input buffer contains at least 5
+        /// bytes.
+        required_size: Option<usize>,
+    },
 }
 
 pub struct RowDescriptionEntry {

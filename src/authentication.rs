@@ -1,6 +1,9 @@
+//! Authentication protocol support.
 use hex::ToHex;
 use md5::Context;
 
+/// Hashes authentication information in a way suitable for use in response
+/// to an `AuthenticationMd5Password` message.
 pub fn md5_hash(username: &[u8], password: &[u8], salt: [u8; 4]) -> String {
     let mut context = Context::new();
     context.consume(password);

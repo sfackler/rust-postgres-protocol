@@ -1,9 +1,14 @@
+//! Frontend message serialization.
+#![allow(missing_docs)]
+
 use byteorder::{WriteBytesExt, BigEndian};
 use std::io::{self, Cursor};
 
 use {Oid, FromUsize};
 
+/// A trait implemented by types serializable as frontend Postgres messages.
 pub trait Message {
+    /// Serializes this message to a buffer.
     fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error>;
 }
 

@@ -1,3 +1,7 @@
+//! An allocation-free backend message parser.
+//!
+//! Due to borrow checker deficiencies, this parser is currently very
+//! difficult to use practice.
 use byteorder::{ReadBytesExt, BigEndian};
 use fallible_iterator::FallibleIterator;
 use std::io;

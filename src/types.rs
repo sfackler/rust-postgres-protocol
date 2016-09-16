@@ -1,3 +1,4 @@
+//! Conversions to and from Postgres's binary format for various types.
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 use fallible_iterator::FallibleIterator;
 use std::error::Error;
@@ -453,6 +454,7 @@ pub fn array_from_sql<'a>(mut buf: &'a [u8]) -> Result<Array<'a>, Box<Error + Sy
     })
 }
 
+/// A Postgres array.
 pub struct Array<'a> {
     dimensions: i32,
     has_nulls: bool,
@@ -462,18 +464,22 @@ pub struct Array<'a> {
 }
 
 impl<'a> Array<'a> {
+    /// Returns true if there are `NULL` elements.
     pub fn has_nulls(&self) -> bool {
         self.has_nulls
     }
 
+    /// Returns the OID of the elements of the array.
     pub fn element_type(&self) -> Oid {
         self.element_type
     }
 
+    /// Returns an iterator over the dimensions of the array.
     pub fn dimensions(&self) -> ArrayDimensions<'a> {
         ArrayDimensions(&self.buf[..self.dimensions as usize * 8])
     }
 
+    /// Returns an iterator over the values of the array.
     pub fn values(&self) -> ArrayValues<'a> {
         ArrayValues {
             remaining: self.elements,
@@ -482,6 +488,7 @@ impl<'a> Array<'a> {
     }
 }
 
+/// An iterator over the dimensions of an array.
 pub struct ArrayDimensions<'a>(&'a [u8]);
 
 impl<'a> FallibleIterator for ArrayDimensions<'a> {
@@ -508,12 +515,17 @@ impl<'a> FallibleIterator for ArrayDimensions<'a> {
     }
 }
 
+/// Information about a dimension of an array.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ArrayDimension {
+    /// The length of this dimension.
     pub len: i32,
+
+    /// The base value used to index into this dimension.
     pub lower_bound: i32,
 }
 
+/// An iterator over the values of an array, in row-major order.
 pub struct ArrayValues<'a> {
     remaining: i32,
     buf: &'a [u8],

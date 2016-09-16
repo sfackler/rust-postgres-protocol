@@ -1,3 +1,5 @@
+//! Low level Postgres protocol APIs.
+#![warn(missing_docs)]
 extern crate byteorder;
 extern crate fallible_iterator;
 extern crate hex;
@@ -9,6 +11,7 @@ pub mod authentication;
 pub mod message;
 pub mod types;
 
+/// A Postgres OID.
 pub type Oid = u32;
 
 trait FromUsize: Sized {
