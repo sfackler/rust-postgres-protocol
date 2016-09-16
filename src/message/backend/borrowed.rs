@@ -344,6 +344,7 @@ pub struct AuthenticationMd5PasswordBody<'a> {
 }
 
 impl<'a> AuthenticationMd5PasswordBody<'a> {
+    #[inline]
     pub fn salt(&self) -> [u8; 4] {
         self.salt
     }
@@ -356,10 +357,12 @@ pub struct BackendKeyDataBody<'a> {
 }
 
 impl<'a> BackendKeyDataBody<'a> {
+    #[inline]
     pub fn process_id(&self) -> i32 {
         self.process_id
     }
 
+    #[inline]
     pub fn secret_key(&self) -> i32 {
         self.secret_key
     }
@@ -370,6 +373,7 @@ pub struct CommandCompleteBody<'a> {
 }
 
 impl<'a> CommandCompleteBody<'a> {
+    #[inline]
     pub fn tag(&self) -> &'a str {
         self.tag
     }
@@ -380,6 +384,7 @@ pub struct CopyDataBody<'a> {
 }
 
 impl<'a> CopyDataBody<'a> {
+    #[inline]
     pub fn data(&self) -> &'a [u8] {
         self.data
     }
@@ -392,10 +397,12 @@ pub struct CopyInResponseBody<'a> {
 }
 
 impl<'a> CopyInResponseBody<'a> {
+    #[inline]
     pub fn format(&self) -> u8 {
         self.format
     }
 
+    #[inline]
     pub fn column_formats(&self) -> ColumnFormats<'a> {
         ColumnFormats {
             remaining: self.len,
@@ -413,6 +420,7 @@ impl<'a> FallibleIterator for ColumnFormats<'a> {
     type Item = u16;
     type Error = io::Error;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<u16>, io::Error> {
         if self.remaining == 0 {
             check_empty!(self.buf);
@@ -422,6 +430,7 @@ impl<'a> FallibleIterator for ColumnFormats<'a> {
         self.buf.read_u16::<BigEndian>().map(Some).map_err(Into::into)
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.remaining as usize;
         (len, Some(len))
@@ -435,10 +444,12 @@ pub struct CopyOutResponseBody<'a> {
 }
 
 impl<'a> CopyOutResponseBody<'a> {
+    #[inline]
     pub fn format(&self) -> u8 {
         self.format
     }
 
+    #[inline]
     pub fn column_formats(&self) -> ColumnFormats<'a> {
         ColumnFormats {
             remaining: self.len,
@@ -453,6 +464,7 @@ pub struct DataRowBody<'a> {
 }
 
 impl<'a> DataRowBody<'a> {
+    #[inline]
     pub fn values(&self) -> DataRowValues<'a> {
         DataRowValues {
             remaining: self.len,
@@ -470,6 +482,7 @@ impl<'a> FallibleIterator for DataRowValues<'a> {
     type Item = Option<&'a [u8]>;
     type Error = io::Error;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<Option<&'a [u8]>>, io::Error> {
         if self.remaining == 0 {
             check_empty!(self.buf);
@@ -491,6 +504,7 @@ impl<'a> FallibleIterator for DataRowValues<'a> {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.remaining as usize;
         (len, Some(len))
@@ -500,6 +514,7 @@ impl<'a> FallibleIterator for DataRowValues<'a> {
 pub struct ErrorResponseBody<'a>(&'a [u8]);
 
 impl<'a> ErrorResponseBody<'a> {
+    #[inline]
     pub fn fields(&self) -> ErrorFields<'a> {
         ErrorFields(self.0)
     }
@@ -511,6 +526,7 @@ impl<'a> FallibleIterator for ErrorFields<'a> {
     type Item = ErrorField<'a>;
     type Error = io::Error;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<ErrorField<'a>>, io::Error> {
         let type_ = try!(self.0.read_u8());
         if type_ == 0 {
@@ -533,10 +549,12 @@ pub struct ErrorField<'a> {
 }
 
 impl<'a> ErrorField<'a> {
+    #[inline]
     pub fn type_(&self) -> u8 {
         self.type_
     }
 
+    #[inline]
     pub fn value(&self) -> &'a str {
         self.value
     }
@@ -545,6 +563,7 @@ impl<'a> ErrorField<'a> {
 pub struct NoticeResponseBody<'a>(&'a [u8]);
 
 impl<'a> NoticeResponseBody<'a> {
+    #[inline]
     pub fn fields(&self) -> ErrorFields<'a> {
         ErrorFields(self.0)
     }
@@ -557,14 +576,17 @@ pub struct NotificationResponseBody<'a> {
 }
 
 impl<'a> NotificationResponseBody<'a> {
+    #[inline]
     pub fn process_id(&self) -> i32 {
         self.process_id
     }
 
+    #[inline]
     pub fn channel(&self) -> &'a str {
         self.channel
     }
 
+    #[inline]
     pub fn message(&self) -> &'a str {
         self.message
     }
@@ -576,6 +598,7 @@ pub struct ParameterDescriptionBody<'a> {
 }
 
 impl<'a> ParameterDescriptionBody<'a> {
+    #[inline]
     pub fn parameters(&self) -> Parameters<'a> {
         Parameters {
             remaining: self.len,
@@ -593,6 +616,7 @@ impl<'a> FallibleIterator for Parameters<'a> {
     type Item = Oid;
     type Error = io::Error;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<Oid>, io::Error> {
         if self.remaining == 0 {
             check_empty!(self.buf);
@@ -603,6 +627,7 @@ impl<'a> FallibleIterator for Parameters<'a> {
         self.buf.read_u32::<BigEndian>().map(Some).map_err(Into::into)
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.remaining as usize;
         (len, Some(len))
@@ -615,10 +640,12 @@ pub struct ParameterStatusBody<'a> {
 }
 
 impl<'a> ParameterStatusBody<'a> {
+    #[inline]
     pub fn name(&self) -> &'a str {
         self.name
     }
 
+    #[inline]
     pub fn value(&self) -> &'a str {
         self.value
     }
@@ -630,6 +657,7 @@ pub struct ReadyForQueryBody<'a> {
 }
 
 impl<'a> ReadyForQueryBody<'a> {
+    #[inline]
     pub fn status(&self) -> u8 {
         self.status
     }
@@ -641,6 +669,7 @@ pub struct RowDescriptionBody<'a> {
 }
 
 impl<'a> RowDescriptionBody<'a> {
+    #[inline]
     pub fn fields(&self) -> Fields<'a> {
         Fields {
             remaining: self.len,
@@ -658,6 +687,7 @@ impl<'a> FallibleIterator for Fields<'a> {
     type Item = Field<'a>;
     type Error = io::Error;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<Field<'a>>, io::Error> {
         if self.remaining == 0 {
             check_empty!(self.buf);
@@ -696,30 +726,37 @@ pub struct Field<'a> {
 }
 
 impl<'a> Field<'a> {
+    #[inline]
     pub fn name(&self) -> &'a str {
         self.name
     }
 
+    #[inline]
     pub fn table_oid(&self) -> Oid {
         self.table_oid
     }
 
+    #[inline]
     pub fn column_id(&self) -> i16 {
         self.column_id
     }
 
+    #[inline]
     pub fn type_oid(&self) -> Oid {
         self.type_oid
     }
 
+    #[inline]
     pub fn type_size(&self) -> i16 {
         self.type_size
     }
 
+    #[inline]
     pub fn type_modifier(&self) -> i32 {
         self.type_modifier
     }
 
+    #[inline]
     pub fn format(&self) -> i16 {
         self.format
     }

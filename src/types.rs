@@ -8,11 +8,13 @@ use std::str;
 use {Oid, FromUsize};
 
 /// Serializes a `BOOL` value.
+#[inline]
 pub fn bool_to_sql(v: bool, buf: &mut Vec<u8>) {
     buf.push(v as u8);
 }
 
 /// Deserializes a `BOOL` value.
+#[inline]
 pub fn bool_from_sql(buf: &[u8]) -> Result<bool, Box<Error + Sync + Send>> {
     if buf.len() != 1 {
         return Err("invalid buffer size".into());
@@ -22,31 +24,37 @@ pub fn bool_from_sql(buf: &[u8]) -> Result<bool, Box<Error + Sync + Send>> {
 }
 
 /// Serializes a `BYTEA` value.
+#[inline]
 pub fn bytea_to_sql(v: &[u8], buf: &mut Vec<u8>) {
     buf.extend_from_slice(v);
 }
 
 /// Deserializes a `BYTEA value.
+#[inline]
 pub fn bytea_from_sql(buf: &[u8]) -> &[u8] {
     buf
 }
 
 /// Serializes a `TEXT`, `VARCHAR`, `CHAR(n)`, `NAME`, or `CITEXT` value.
+#[inline]
 pub fn text_to_sql(v: &str, buf: &mut Vec<u8>) {
     buf.extend_from_slice(v.as_bytes());
 }
 
 /// Deserializes a `TEXT`, `VARCHAR`, `CHAR(n)`, `NAME`, or `CITEXT` value.
+#[inline]
 pub fn text_from_sql(buf: &[u8]) -> Result<&str, Box<Error + Sync + Send>> {
     Ok(try!(str::from_utf8(buf)))
 }
 
 /// Serializes a `"char"` value.
+#[inline]
 pub fn char_to_sql(v: i8, buf: &mut Vec<u8>) {
     buf.write_i8(v).unwrap();
 }
 
 /// Deserializes a `"char"` value.
+#[inline]
 pub fn char_from_sql(mut buf: &[u8]) -> Result<i8, Box<Error + Sync + Send>> {
     let v = try!(buf.read_i8());
     if !buf.is_empty() {
@@ -56,11 +64,13 @@ pub fn char_from_sql(mut buf: &[u8]) -> Result<i8, Box<Error + Sync + Send>> {
 }
 
 /// Serializes an `INT2` value.
+#[inline]
 pub fn int2_to_sql(v: i16, buf: &mut Vec<u8>) {
     buf.write_i16::<BigEndian>(v).unwrap();
 }
 
 /// Deserializes an `INT2` value.
+#[inline]
 pub fn int2_from_sql(mut buf: &[u8]) -> Result<i16, Box<Error + Sync + Send>> {
     let v = try!(buf.read_i16::<BigEndian>());
     if !buf.is_empty() {
@@ -70,11 +80,13 @@ pub fn int2_from_sql(mut buf: &[u8]) -> Result<i16, Box<Error + Sync + Send>> {
 }
 
 /// Serializes an `INT4` value.
+#[inline]
 pub fn int4_to_sql(v: i32, buf: &mut Vec<u8>) {
     buf.write_i32::<BigEndian>(v).unwrap();
 }
 
 /// Deserializes an `INT4` value.
+#[inline]
 pub fn int4_from_sql(mut buf: &[u8]) -> Result<i32, Box<Error + Sync + Send>> {
     let v = try!(buf.read_i32::<BigEndian>());
     if !buf.is_empty() {
@@ -84,11 +96,13 @@ pub fn int4_from_sql(mut buf: &[u8]) -> Result<i32, Box<Error + Sync + Send>> {
 }
 
 /// Serializes an `OID` value.
+#[inline]
 pub fn oid_to_sql(v: Oid, buf: &mut Vec<u8>) {
     buf.write_u32::<BigEndian>(v).unwrap();
 }
 
 /// Deserializes an `OID` value.
+#[inline]
 pub fn oid_from_sql(mut buf: &[u8]) -> Result<Oid, Box<Error + Sync + Send>> {
     let v = try!(buf.read_u32::<BigEndian>());
     if !buf.is_empty() {
@@ -98,11 +112,13 @@ pub fn oid_from_sql(mut buf: &[u8]) -> Result<Oid, Box<Error + Sync + Send>> {
 }
 
 /// Serializes an `INT8` value.
+#[inline]
 pub fn int8_to_sql(v: i64, buf: &mut Vec<u8>) {
     buf.write_i64::<BigEndian>(v).unwrap();
 }
 
 /// Deserializes an `INT8` value.
+#[inline]
 pub fn int8_from_sql(mut buf: &[u8]) -> Result<i64, Box<Error + Sync + Send>> {
     let v = try!(buf.read_i64::<BigEndian>());
     if !buf.is_empty() {
@@ -112,11 +128,13 @@ pub fn int8_from_sql(mut buf: &[u8]) -> Result<i64, Box<Error + Sync + Send>> {
 }
 
 /// Serializes a `FLOAT4` value.
+#[inline]
 pub fn float4_to_sql(v: f32, buf: &mut Vec<u8>) {
     buf.write_f32::<BigEndian>(v).unwrap();
 }
 
 /// Deserializes a `FLOAT4` value.
+#[inline]
 pub fn float4_from_sql(mut buf: &[u8]) -> Result<f32, Box<Error + Sync + Send>> {
     let v = try!(buf.read_f32::<BigEndian>());
     if !buf.is_empty() {
@@ -126,11 +144,13 @@ pub fn float4_from_sql(mut buf: &[u8]) -> Result<f32, Box<Error + Sync + Send>> 
 }
 
 /// Serializes a `FLOAT8` value.
+#[inline]
 pub fn float8_to_sql(v: f64, buf: &mut Vec<u8>) {
     buf.write_f64::<BigEndian>(v).unwrap();
 }
 
 /// Deserializes a `FLOAT8` value.
+#[inline]
 pub fn float8_from_sql(mut buf: &[u8]) -> Result<f64, Box<Error + Sync + Send>> {
     let v = try!(buf.read_f64::<BigEndian>());
     if !buf.is_empty() {
@@ -140,6 +160,7 @@ pub fn float8_from_sql(mut buf: &[u8]) -> Result<f64, Box<Error + Sync + Send>> 
 }
 
 /// Serializes an `HSTORE` value.
+#[inline]
 pub fn hstore_to_sql<'a, I>(values: I, buf: &mut Vec<u8>) -> Result<(), Box<Error + Sync + Send>>
     where I: IntoIterator<Item = (&'a str, Option<&'a str>)>
 {
@@ -174,6 +195,7 @@ fn write_pascal_string(s: &str, buf: &mut Vec<u8>) -> Result<(), Box<Error + Syn
 }
 
 /// Deserializes an `HSTORE` value.
+#[inline]
 pub fn hstore_from_sql<'a>(mut buf: &'a [u8])
                            -> Result<HstoreEntries<'a>, Box<Error + Sync + Send>> {
     let count = try!(buf.read_i32::<BigEndian>());
@@ -197,6 +219,7 @@ impl<'a> FallibleIterator for HstoreEntries<'a> {
     type Item = (&'a str, Option<&'a str>);
     type Error = Box<Error + Sync + Send>;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<(&'a str, Option<&'a str>)>, Box<Error + Sync + Send>> {
         if self.remaining == 0 {
             if !self.buf.is_empty() {
@@ -228,6 +251,7 @@ impl<'a> FallibleIterator for HstoreEntries<'a> {
         Ok(Some((key, value)))
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.remaining as usize;
         (len, Some(len))
@@ -235,6 +259,7 @@ impl<'a> FallibleIterator for HstoreEntries<'a> {
 }
 
 /// Serializes a `VARBIT` or `BIT` value.
+#[inline]
 pub fn varbit_to_sql<I>(len: usize, v: I, buf: &mut Vec<u8>) -> Result<(), Box<Error + Sync + Send>>
     where I: Iterator<Item = u8>
 {
@@ -249,6 +274,7 @@ pub fn varbit_to_sql<I>(len: usize, v: I, buf: &mut Vec<u8>) -> Result<(), Box<E
 }
 
 /// Deserializes a `VARBIT` or `BIT` value.
+#[inline]
 pub fn varbit_from_sql<'a>(mut buf: &'a [u8]) -> Result<Varbit<'a>, Box<Error + Sync + Send>> {
     let len = try!(buf.read_i32::<BigEndian>());
     if len < 0 {
@@ -273,11 +299,13 @@ pub struct Varbit<'a> {
 
 impl<'a> Varbit<'a> {
     /// Returns the number of bits.
+    #[inline]
     pub fn len(&self) -> usize {
         self.len
     }
 
     /// Returns the bits as a slice of bytes.
+    #[inline]
     pub fn bytes(&self) -> &'a [u8] {
         self.bytes
     }
@@ -286,6 +314,7 @@ impl<'a> Varbit<'a> {
 /// Serializes a `TIMESTAMP` or `TIMESTAMPTZ` value.
 ///
 /// The value should represent the number of microseconds since midnight, January 1st, 2000.
+#[inline]
 pub fn timestamp_to_sql(v: i64, buf: &mut Vec<u8>) {
     buf.write_i64::<BigEndian>(v).unwrap();
 }
@@ -293,6 +322,7 @@ pub fn timestamp_to_sql(v: i64, buf: &mut Vec<u8>) {
 /// Deserializes a `TIMESTAMP` or `TIMESTAMPTZ` value.
 ///
 /// The value represents the number of microseconds since midnight, January 1st, 2000.
+#[inline]
 pub fn timestamp_from_sql(mut buf: &[u8]) -> Result<i64, Box<Error + Sync + Send>> {
     let v = try!(buf.read_i64::<BigEndian>());
     if !buf.is_empty() {
@@ -304,6 +334,7 @@ pub fn timestamp_from_sql(mut buf: &[u8]) -> Result<i64, Box<Error + Sync + Send
 /// Serializes a `DATE` value.
 ///
 /// The value should represent the number of days since January 1st, 2000.
+#[inline]
 pub fn date_to_sql(v: i32, buf: &mut Vec<u8>) {
     buf.write_i32::<BigEndian>(v).unwrap();
 }
@@ -311,6 +342,7 @@ pub fn date_to_sql(v: i32, buf: &mut Vec<u8>) {
 /// Deserializes a `DATE` value.
 ///
 /// The value represents the number of days since January 1st, 2000.
+#[inline]
 pub fn date_from_sql(mut buf: &[u8]) -> Result<i32, Box<Error + Sync + Send>> {
     let v = try!(buf.read_i32::<BigEndian>());
     if !buf.is_empty() {
@@ -322,6 +354,7 @@ pub fn date_from_sql(mut buf: &[u8]) -> Result<i32, Box<Error + Sync + Send>> {
 /// Serializes a `TIME` or `TIMETZ` value.
 ///
 /// The value should represent the number of microseconds since midnight.
+#[inline]
 pub fn time_to_sql(v: i64, buf: &mut Vec<u8>) {
     buf.write_i64::<BigEndian>(v).unwrap();
 }
@@ -329,6 +362,7 @@ pub fn time_to_sql(v: i64, buf: &mut Vec<u8>) {
 /// Deserializes a `TIME` or `TIMETZ` value.
 ///
 /// The value represents the number of microseconds since midnight.
+#[inline]
 pub fn time_from_sql(mut buf: &[u8]) -> Result<i64, Box<Error + Sync + Send>> {
     let v = try!(buf.read_i64::<BigEndian>());
     if !buf.is_empty() {
@@ -338,11 +372,13 @@ pub fn time_from_sql(mut buf: &[u8]) -> Result<i64, Box<Error + Sync + Send>> {
 }
 
 /// Serializes a `MACADDR` value.
+#[inline]
 pub fn macaddr_to_sql(v: [u8; 6], buf: &mut Vec<u8>) {
     buf.extend_from_slice(&v);
 }
 
 /// Deserializes a `MACADDR` value.
+#[inline]
 pub fn macaddr_from_sql(buf: &[u8]) -> Result<[u8; 6], Box<Error + Sync + Send>> {
     if buf.len() != 6 {
         return Err("invalid message length".into());
@@ -353,11 +389,13 @@ pub fn macaddr_from_sql(buf: &[u8]) -> Result<[u8; 6], Box<Error + Sync + Send>>
 }
 
 /// Serializes a `UUID` value.
+#[inline]
 pub fn uuid_to_sql(v: [u8; 16], buf: &mut Vec<u8>) {
     buf.extend_from_slice(&v);
 }
 
 /// Deserializes a `UUID` value.
+#[inline]
 pub fn uuid_from_sql(buf: &[u8]) -> Result<[u8; 16], Box<Error + Sync + Send>> {
     if buf.len() != 16 {
         return Err("invalid message length".into());
@@ -368,6 +406,7 @@ pub fn uuid_from_sql(buf: &[u8]) -> Result<[u8; 16], Box<Error + Sync + Send>> {
 }
 
 /// Serializes an array value.
+#[inline]
 pub fn array_to_sql<T, I, J, F>(dimensions: I,
                                 has_nulls: bool,
                                 element_type: Oid,
@@ -413,12 +452,12 @@ pub fn array_to_sql<T, I, J, F>(dimensions: I,
 pub enum IsNull {
     /// The value is `NULL`.
     Yes,
-
     /// The value is not `NULL`.
     No,
 }
 
 /// Deserializes an array value.
+#[inline]
 pub fn array_from_sql<'a>(mut buf: &'a [u8]) -> Result<Array<'a>, Box<Error + Sync + Send>> {
     let dimensions = try!(buf.read_i32::<BigEndian>());
     if dimensions < 0 {
@@ -465,21 +504,25 @@ pub struct Array<'a> {
 
 impl<'a> Array<'a> {
     /// Returns true if there are `NULL` elements.
+    #[inline]
     pub fn has_nulls(&self) -> bool {
         self.has_nulls
     }
 
     /// Returns the OID of the elements of the array.
+    #[inline]
     pub fn element_type(&self) -> Oid {
         self.element_type
     }
 
     /// Returns an iterator over the dimensions of the array.
+    #[inline]
     pub fn dimensions(&self) -> ArrayDimensions<'a> {
         ArrayDimensions(&self.buf[..self.dimensions as usize * 8])
     }
 
     /// Returns an iterator over the values of the array.
+    #[inline]
     pub fn values(&self) -> ArrayValues<'a> {
         ArrayValues {
             remaining: self.elements,
@@ -495,6 +538,7 @@ impl<'a> FallibleIterator for ArrayDimensions<'a> {
     type Item = ArrayDimension;
     type Error = Box<Error + Sync + Send>;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<ArrayDimension>, Box<Error + Sync + Send>> {
         if self.0.is_empty() {
             return Ok(None);
@@ -509,6 +553,7 @@ impl<'a> FallibleIterator for ArrayDimensions<'a> {
         }))
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.0.len() / 8;
         (len, Some(len))
@@ -535,6 +580,7 @@ impl<'a> FallibleIterator for ArrayValues<'a> {
     type Item = Option<&'a [u8]>;
     type Error = Box<Error + Sync + Send>;
 
+    #[inline]
     fn next(&mut self) -> Result<Option<Option<&'a [u8]>>, Box<Error + Sync + Send>> {
         if self.remaining == 0 {
             if !self.buf.is_empty() {
