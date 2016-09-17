@@ -625,7 +625,10 @@ pub fn empty_range_to_sql(buf: &mut Vec<u8>) {
 }
 
 /// Serializes a range value.
-pub fn range_to_sql<F, G>(lower: F, upper: G, buf: &mut Vec<u8>) -> Result<(), Box<Error + Sync + Send>>
+pub fn range_to_sql<F, G>(lower: F,
+                          upper: G,
+                          buf: &mut Vec<u8>)
+                          -> Result<(), Box<Error + Sync + Send>>
     where F: FnOnce(&mut Vec<u8>) -> Result<RangeBound<IsNull>, Box<Error + Sync + Send>>,
           G: FnOnce(&mut Vec<u8>) -> Result<RangeBound<IsNull>, Box<Error + Sync + Send>>
 {
@@ -701,11 +704,19 @@ pub fn range_from_sql<'a>(mut buf: &'a [u8]) -> Result<Range<'a>, Box<Error + Sy
     let lower = try!(read_bound(&mut buf, tag, RANGE_LOWER_UNBOUNDED, RANGE_LOWER_INCLUSIVE));
     let upper = try!(read_bound(&mut buf, tag, RANGE_UPPER_UNBOUNDED, RANGE_UPPER_INCLUSIVE));
 
+    if !buf.is_empty() {
+        return Err("invalid message size".into());
+    }
+
     Ok(Range::Nonempty(lower, upper))
 }
 
 #[inline]
-fn read_bound<'a>(buf: &mut &'a [u8], tag: u8, unbounded: u8, inclusive: u8) -> Result<RangeBound<Option<&'a [u8]>>, Box<Error + Sync + Send>> {
+fn read_bound<'a>(buf: &mut &'a [u8],
+                  tag: u8,
+                  unbounded: u8,
+                  inclusive: u8)
+                  -> Result<RangeBound<Option<&'a [u8]>>, Box<Error + Sync + Send>> {
     if tag & unbounded != 0 {
         Ok(RangeBound::Unbounded)
     } else {

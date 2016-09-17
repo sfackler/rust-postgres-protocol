@@ -1,4 +1,14 @@
 //! Low level Postgres protocol APIs.
+//!
+//! This crate implements the low level components of Postgres's communication
+//! protocol, including message and value serialization and deserialization.
+//! It is designed to be used as a building block by higher level APIs such as
+//! `rust-postgres`, and should not typically be used directly.
+//!
+//! # Note
+//!
+//! This library assumes that the `client_encoding` backend parameter has been
+//! set to `UTF8`. It will most likely not behave properly if that is not the case.
 #![warn(missing_docs)]
 extern crate byteorder;
 extern crate fallible_iterator;

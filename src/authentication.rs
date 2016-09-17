@@ -4,6 +4,9 @@ use md5::Context;
 
 /// Hashes authentication information in a way suitable for use in response
 /// to an `AuthenticationMd5Password` message.
+///
+/// The resulting string should be sent back to the database in a
+/// `PasswordMessage` message.
 #[inline]
 pub fn md5_hash(username: &[u8], password: &[u8], salt: [u8; 4]) -> String {
     let mut context = Context::new();
