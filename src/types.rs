@@ -7,6 +7,12 @@ use std::str;
 
 use {Oid, FromUsize};
 
+const RANGE_UPPER_UNBOUNDED: u8 = 0b0001_0000;
+const RANGE_LOWER_UNBOUNDED: u8 = 0b0000_1000;
+const RANGE_UPPER_INCLUSIVE: u8 = 0b0000_0100;
+const RANGE_LOWER_INCLUSIVE: u8 = 0b0000_0010;
+const RANGE_EMPTY: u8           = 0b0000_0001;
+
 /// Serializes a `BOOL` value.
 #[inline]
 pub fn bool_to_sql(v: bool, buf: &mut Vec<u8>) {
@@ -610,6 +616,126 @@ impl<'a> FallibleIterator for ArrayValues<'a> {
         let len = self.remaining as usize;
         (len, Some(len))
     }
+}
+
+/// Serializes an empty range.
+#[inline]
+pub fn empty_range_to_sql(buf: &mut Vec<u8>) {
+    buf.push(RANGE_EMPTY);
+}
+
+/// Serializes a range value.
+pub fn range_to_sql<F, G>(lower: F, upper: G, buf: &mut Vec<u8>) -> Result<(), Box<Error + Sync + Send>>
+    where F: FnOnce(&mut Vec<u8>) -> Result<RangeBound<IsNull>, Box<Error + Sync + Send>>,
+          G: FnOnce(&mut Vec<u8>) -> Result<RangeBound<IsNull>, Box<Error + Sync + Send>>
+{
+    let tag_idx = buf.len();
+    buf.push(0);
+    let mut tag = 0;
+
+    match try!(write_bound(lower, buf)) {
+        RangeBound::Inclusive(()) => tag |= RANGE_LOWER_INCLUSIVE,
+        RangeBound::Exclusive(()) => {}
+        RangeBound::Unbounded => tag |= RANGE_LOWER_UNBOUNDED,
+    }
+
+    match try!(write_bound(upper, buf)) {
+        RangeBound::Inclusive(()) => tag |= RANGE_UPPER_INCLUSIVE,
+        RangeBound::Exclusive(()) => {}
+        RangeBound::Unbounded => tag |= RANGE_UPPER_UNBOUNDED,
+    }
+
+    buf[tag_idx] = tag;
+
+    Ok(())
+}
+
+fn write_bound<F>(bound: F, buf: &mut Vec<u8>) -> Result<RangeBound<()>, Box<Error + Sync + Send>>
+    where F: FnOnce(&mut Vec<u8>) -> Result<RangeBound<IsNull>, Box<Error + Sync + Send>>
+{
+    let base = buf.len();
+    buf.extend_from_slice(&[0; 4]);
+
+    let (null, ret) = match try!(bound(buf)) {
+        RangeBound::Inclusive(null) => (Some(null), RangeBound::Inclusive(())),
+        RangeBound::Exclusive(null) => (Some(null), RangeBound::Exclusive(())),
+        RangeBound::Unbounded => (None, RangeBound::Unbounded),
+    };
+
+    match null {
+        Some(null) => {
+            let len = match null {
+                IsNull::No => try!(i32::from_usize(buf.len() - base - 4)),
+                IsNull::Yes => -1,
+            };
+            Cursor::new(&mut buf[base..base + 4]).write_i32::<BigEndian>(len).unwrap();
+        }
+        None => buf.truncate(base),
+    }
+
+    Ok(ret)
+}
+
+/// One side of a range.
+pub enum RangeBound<T> {
+    /// An inclusive bound.
+    Inclusive(T),
+    /// An exclusive bound.
+    Exclusive(T),
+    /// No bound.
+    Unbounded,
+}
+
+/// Deserializes a range value.
+#[inline]
+pub fn range_from_sql<'a>(mut buf: &'a [u8]) -> Result<Range<'a>, Box<Error + Sync + Send>> {
+    let tag = try!(buf.read_u8());
+
+    if tag == RANGE_EMPTY {
+        if !buf.is_empty() {
+            return Err("invalid message size".into());
+        }
+        return Ok(Range::Empty);
+    }
+
+    let lower = try!(read_bound(&mut buf, tag, RANGE_LOWER_UNBOUNDED, RANGE_LOWER_INCLUSIVE));
+    let upper = try!(read_bound(&mut buf, tag, RANGE_UPPER_UNBOUNDED, RANGE_UPPER_INCLUSIVE));
+
+    Ok(Range::Nonempty(lower, upper))
+}
+
+#[inline]
+fn read_bound<'a>(buf: &mut &'a [u8], tag: u8, unbounded: u8, inclusive: u8) -> Result<RangeBound<Option<&'a [u8]>>, Box<Error + Sync + Send>> {
+    if tag & unbounded != 0 {
+        Ok(RangeBound::Unbounded)
+    } else {
+        let len = try!(buf.read_i32::<BigEndian>());
+        let value = if len < 0 {
+            None
+        } else {
+            let len = len as usize;
+            if buf.len() < len {
+                return Err("invalid message size".into());
+            }
+            let (value, tail) = buf.split_at(len);
+            *buf = tail;
+            Some(value)
+        };
+
+        if tag & inclusive != 0 {
+            Ok(RangeBound::Inclusive(value))
+        } else {
+            Ok(RangeBound::Exclusive(value))
+        }
+    }
+}
+
+/// A Postgres range.
+pub enum Range<'a> {
+    /// An empty range.
+    Empty,
+    /// A nonempty range.
+    Nonempty(RangeBound<Option<&'a [u8]>>, RangeBound<Option<&'a [u8]>>),
 }
 
 #[cfg(test)]
