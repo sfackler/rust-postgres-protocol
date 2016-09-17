@@ -235,6 +235,7 @@ impl<'a> Message<'a> {
         })
     }
 
+    /// Converts this message into an owned representation.
     pub fn to_owned(&self) -> io::Result<backend::Message> {
         let ret = match *self {
             Message::AuthenticationCleartextPassword => {
