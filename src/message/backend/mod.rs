@@ -75,7 +75,7 @@ pub enum ParseResult<T> {
         /// The message.
         message: T,
         /// The number of bytes of the input buffer consumed to parse this message.
-        consumed: usize
+        consumed: usize,
     },
     /// The buffer did not contain a full message.
     Incomplete {
