@@ -192,22 +192,14 @@ pub fn startup_message<'a, I>(parameters: I, buf: &mut Vec<u8>) -> io::Result<()
     })
 }
 
-pub struct Sync;
-
-impl Message for Sync {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
-        buf.push(b'S');
-        write_body(buf, |_| Ok(()))
-    }
+pub fn sync(buf: &mut Vec<u8>) {
+    buf.push(b'S');
+    write_body(buf, |_| Ok::<(), io::Error>(())).unwrap();
 }
 
-pub struct Terminate;
-
-impl Message for Terminate {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
-        buf.push(b'X');
-        write_body(buf, |_| Ok(()))
-    }
+pub fn terminate(buf: &mut Vec<u8>) {
+    buf.push(b'X');
+    write_body(buf, |_| Ok::<(), io::Error>(())).unwrap();
 }
 
 trait WriteCStr {
