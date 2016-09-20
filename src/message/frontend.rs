@@ -133,35 +133,21 @@ pub fn copy_fail(message: &str, buf: &mut Vec<u8>) -> io::Result<()> {
     write_body(buf, |buf| buf.write_cstr(message))
 }
 
-pub struct Describe<'a> {
-    pub variant: u8,
-    pub name: &'a str,
+pub fn describe(variant: u8, name: &str, buf: &mut Vec<u8>) -> io::Result<()> {
+    buf.push(b'D');
+    write_body(buf, |buf| {
+        buf.push(variant);
+        buf.write_cstr(name)
+    })
 }
 
-impl<'a> Message for Describe<'a> {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
-        buf.push(b'D');
-        write_body(buf, |buf| {
-            buf.push(self.variant);
-            buf.write_cstr(self.name)
-        })
-    }
-}
-
-pub struct Execute<'a> {
-    pub portal: &'a str,
-    pub max_rows: i32,
-}
-
-impl<'a> Message for Execute<'a> {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
-        buf.push(b'E');
-        write_body(buf, |buf| {
-            try!(buf.write_cstr(self.portal));
-            try!(buf.write_i32::<BigEndian>(self.max_rows));
-            Ok(())
-        })
-    }
+pub fn execute(portal: &str, max_rows: i32, buf: &mut Vec<u8>) -> io::Result<()> {
+    buf.push(b'E');
+    write_body(buf, |buf| {
+        try!(buf.write_cstr(portal));
+        buf.write_i32::<BigEndian>(max_rows).unwrap();
+        Ok(())
+    })
 }
 
 pub struct Parse<'a> {
