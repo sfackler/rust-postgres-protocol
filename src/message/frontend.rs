@@ -123,24 +123,14 @@ impl<'a> Message for CopyData<'a> {
     }
 }
 
-pub struct CopyDone;
-
-impl Message for CopyDone {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
-        buf.push(b'c');
-        write_body(buf, |_| Ok(()))
-    }
+pub fn copy_done(buf: &mut Vec<u8>) {
+    buf.push(b'c');
+    write_body(buf, |_| Ok::<(), io::Error>(())).unwrap();
 }
 
-pub struct CopyFail<'a> {
-    pub message: &'a str,
-}
-
-impl<'a> Message for CopyFail<'a> {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
-        buf.push(b'f');
-        write_body(buf, |buf| buf.write_cstr(self.message))
-    }
+pub fn copy_fail(message: &str, buf: &mut Vec<u8>) -> io::Result<()> {
+    buf.push(b'f');
+    write_body(buf, |buf| buf.write_cstr(message))
 }
 
 pub struct Describe<'a> {
