@@ -85,12 +85,6 @@ fn write_counted<I, T, F, E>(items: I, mut serializer: F, buf: &mut Vec<u8>) -> 
     Ok(())
 }
 
-/// A trait implemented by types serializable as frontend Postgres messages.
-pub trait Message {
-    /// Serializes this message to a buffer.
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error>;
-}
-
 pub fn cancel_request(process_id: i32, secret_key: i32, buf: &mut Vec<u8>) {
     write_body(buf, |buf| {
         buf.write_i32::<BigEndian>(80877102).unwrap();
@@ -108,18 +102,13 @@ pub fn close(variant: u8, name: &str, buf: &mut Vec<u8>) -> io::Result<()> {
     })
 }
 
-pub struct CopyData<'a> {
-    pub data: &'a [u8],
-}
-
-impl<'a> Message for CopyData<'a> {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
-        buf.push(b'd');
-        write_body(buf, |buf| {
-            buf.extend_from_slice(self.data);
-            Ok(())
-        })
-    }
+// FIXME ideally this'd take a Read but it's unclear what to do at EOF
+pub fn copy_data(data: &[u8], buf: &mut Vec<u8>) -> io::Result<()> {
+    buf.push(b'd');
+    write_body(buf, |buf| {
+        buf.extend_from_slice(data);
+        Ok(())
+    })
 }
 
 pub fn copy_done(buf: &mut Vec<u8>) {
