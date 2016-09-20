@@ -2,18 +2,15 @@
 #![allow(missing_docs)]
 
 use byteorder::{WriteBytesExt, BigEndian};
+use std::error::Error;
 use std::io::{self, Cursor};
+use std::marker;
 
-use {Oid, FromUsize};
+use {Oid, FromUsize, IsNull, write_nullable};
 
-/// A trait implemented by types serializable as frontend Postgres messages.
-pub trait Message {
-    /// Serializes this message to a buffer.
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error>;
-}
-
-fn write_body<F>(buf: &mut Vec<u8>, f: F) -> Result<(), io::Error>
-    where F: FnOnce(&mut Vec<u8>) -> Result<(), io::Error>
+fn write_body<F, E>(buf: &mut Vec<u8>, f: F) -> Result<(), E>
+    where F: FnOnce(&mut Vec<u8>) -> Result<(), E>,
+          E: From<io::Error>
 {
     let base = buf.len();
     buf.extend_from_slice(&[0; 4]);
@@ -21,88 +18,95 @@ fn write_body<F>(buf: &mut Vec<u8>, f: F) -> Result<(), io::Error>
     try!(f(buf));
 
     let size = try!(i32::from_usize(buf.len() - base));
-    try!(Cursor::new(&mut buf[base..base + 4]).write_i32::<BigEndian>(size));
+    Cursor::new(&mut buf[base..base + 4]).write_i32::<BigEndian>(size).unwrap();
     Ok(())
 }
 
-pub struct Bind<'a, T: 'a> {
-    pub portal: &'a str,
-    pub statement: &'a str,
-    pub formats: &'a [i16],
-    pub values: &'a [Option<T>],
-    pub result_formats: &'a [i16],
+pub enum BindError {
+    Conversion(Box<Error + marker::Sync + Send>),
+    Serialization(io::Error),
 }
 
-impl<'a, T> Message for Bind<'a, T>
-    where T: AsRef<[u8]>
+impl From<Box<Error + marker::Sync + Send>> for BindError {
+    fn from(e: Box<Error + marker::Sync + Send>) -> BindError {
+        BindError::Conversion(e)
+    }
+}
+
+impl From<io::Error> for BindError {
+    fn from(e: io::Error) -> BindError {
+        BindError::Serialization(e)
+    }
+}
+
+pub fn bind<I, J, F, T, K>(portal: &str,
+                        statement: &str,
+                        formats: I,
+                        values: J,
+                        mut serializer: F,
+                        result_formats: K,
+                        buf: &mut Vec<u8>)
+                        -> Result<(), BindError>
+    where I: IntoIterator<Item = i16>,
+          J: IntoIterator<Item = T>,
+          F: FnMut(T, &mut Vec<u8>) -> Result<IsNull, Box<Error + marker::Sync + Send>>,
+          K: IntoIterator<Item = i16>,
 {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
-        buf.push(b'B');
+    buf.push(b'B');
 
-        write_body(buf, |buf| {
-            try!(buf.write_cstr(self.portal));
-            try!(buf.write_cstr(self.statement));
+    write_body(buf, |buf| {
+        try!(buf.write_cstr(portal));
+        try!(buf.write_cstr(statement));
+        try!(write_counted(formats,
+                           |f, buf| Ok::<(), io::Error>(buf.write_i16::<BigEndian>(f).unwrap()),
+                           buf));
+        try!(write_counted(values,
+                           |v, buf| write_nullable(|buf| serializer(v, buf), buf),
+                           buf));
+        try!(write_counted(result_formats,
+                           |f, buf| Ok::<(), io::Error>(buf.write_i16::<BigEndian>(f).unwrap()),
+                           buf));
 
-            let num_formats = try!(u16::from_usize(self.formats.len()));
-            try!(buf.write_u16::<BigEndian>(num_formats));
-            for &format in self.formats {
-                try!(buf.write_i16::<BigEndian>(format));
-            }
+        Ok(())
+    })
+}
 
-            let num_values = try!(u16::from_usize(self.values.len()));
-            try!(buf.write_u16::<BigEndian>(num_values));
-            for value in self.values {
-                match *value {
-                    None => try!(buf.write_i32::<BigEndian>(-1)),
-                    Some(ref value) => {
-                        let value = value.as_ref();
-                        let value_len = try!(i32::from_usize(value.len()));
-                        try!(buf.write_i32::<BigEndian>(value_len));
-                        buf.extend_from_slice(value);
-                    }
-                }
-            }
-
-            let num_result_formats = try!(u16::from_usize(self.result_formats.len()));
-            try!(buf.write_u16::<BigEndian>(num_result_formats));
-            for &result_format in self.result_formats {
-                try!(buf.write_i16::<BigEndian>(result_format));
-            }
-
-            Ok(())
-        })
+fn write_counted<I, T, F, E>(items: I, mut serializer: F, buf: &mut Vec<u8>) -> Result<(), E>
+    where I: IntoIterator<Item = T>,
+          F: FnMut(T, &mut Vec<u8>) -> Result<(), E>,
+          E: From<io::Error>
+{
+    let base = buf.len();
+    buf.extend_from_slice(&[0; 2]);
+    let mut count = 0;
+    for item in items {
+        try!(serializer(item, buf));
+        count += 1;
     }
+    let count = try!(i16::from_usize(count));
+    Cursor::new(&mut buf[base..base + 2]).write_i16::<BigEndian>(count).unwrap();
+
+    Ok(())
 }
 
-pub struct CancelRequest {
-    pub process_id: i32,
-    pub secret_key: i32,
+/// A trait implemented by types serializable as frontend Postgres messages.
+pub trait Message {
+    /// Serializes this message to a buffer.
+    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error>;
 }
 
-impl Message for CancelRequest {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
-        write_body(buf, |buf| {
-            try!(buf.write_i32::<BigEndian>(80877102));
-            try!(buf.write_i32::<BigEndian>(self.process_id));
-            try!(buf.write_i32::<BigEndian>(self.secret_key));
-            Ok(())
-        })
-    }
+pub fn cancel_request(process_id: i32, secret_key: i32, buf: &mut Vec<u8>) {
+    buf.write_i32::<BigEndian>(80877102).unwrap();
+    buf.write_i32::<BigEndian>(process_id).unwrap();
+    buf.write_i32::<BigEndian>(secret_key).unwrap();
 }
 
-pub struct Close<'a> {
-    pub variant: u8,
-    pub name: &'a str,
-}
-
-impl<'a> Message for Close<'a> {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
-        buf.push(b'C');
-        write_body(buf, |buf| {
-            buf.push(self.variant);
-            buf.write_cstr(self.name)
-        })
-    }
+pub fn close(variant: u8, name: &str, buf: &mut Vec<u8>) -> io::Result<()> {
+    buf.push(b'C');
+    write_body(buf, |buf| {
+        buf.push(variant);
+        buf.write_cstr(name)
+    })
 }
 
 pub struct CopyData<'a> {
@@ -182,8 +186,8 @@ impl<'a> Message for Parse<'a> {
         write_body(buf, |buf| {
             try!(buf.write_cstr(self.name));
             try!(buf.write_cstr(self.query));
-            let num_param_types = try!(u16::from_usize(self.param_types.len()));
-            try!(buf.write_u16::<BigEndian>(num_param_types));
+            let num_param_types = try!(i16::from_usize(self.param_types.len()));
+            try!(buf.write_i16::<BigEndian>(num_param_types));
             for &param_type in self.param_types {
                 try!(buf.write_u32::<BigEndian>(param_type));
             }

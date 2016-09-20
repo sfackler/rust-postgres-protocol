@@ -5,7 +5,7 @@ use std::error::Error;
 use std::io::Cursor;
 use std::str;
 
-use {Oid, FromUsize};
+use {Oid, IsNull, write_nullable, FromUsize};
 
 const RANGE_UPPER_UNBOUNDED: u8 = 0b0001_0000;
 const RANGE_LOWER_UNBOUNDED: u8 = 0b0000_1000;
@@ -442,24 +442,10 @@ pub fn array_to_sql<T, I, J, F>(dimensions: I,
         .unwrap();
 
     for element in elements {
-        let base = buf.len();
-        buf.extend_from_slice(&[0; 4]);
-        let size = match try!(serializer(element, buf)) {
-            IsNull::No => try!(i32::from_usize(buf.len() - base - 4)),
-            IsNull::Yes => -1,
-        };
-        Cursor::new(&mut buf[base..base + 4]).write_i32::<BigEndian>(size).unwrap();
+        try!(write_nullable(|buf| serializer(element, buf), buf));
     }
 
     Ok(())
-}
-
-/// An enum indicating if a value is `NULL` or not.
-pub enum IsNull {
-    /// The value is `NULL`.
-    Yes,
-    /// The value is not `NULL`.
-    No,
 }
 
 /// Deserializes an array value.

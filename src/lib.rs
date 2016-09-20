@@ -15,7 +15,8 @@ extern crate fallible_iterator;
 extern crate hex;
 extern crate md5;
 
-use std::io;
+use byteorder::{WriteBytesExt, BigEndian};
+use std::io::{self, Cursor};
 
 pub mod authentication;
 pub mod message;
@@ -23,6 +24,29 @@ pub mod types;
 
 /// A Postgres OID.
 pub type Oid = u32;
+
+/// An enum indicating if a value is `NULL` or not.
+pub enum IsNull {
+    /// The value is `NULL`.
+    Yes,
+    /// The value is not `NULL`.
+    No,
+}
+
+fn write_nullable<F, E>(serializer: F, buf: &mut Vec<u8>) -> Result<(), E>
+    where F: FnOnce(&mut Vec<u8>) -> Result<IsNull, E>,
+          E: From<io::Error>
+{
+    let base = buf.len();
+    buf.extend_from_slice(&[0; 4]);
+    let size = match try!(serializer(buf)) {
+        IsNull::No => try!(i32::from_usize(buf.len() - base - 4)),
+        IsNull::Yes => -1,
+    };
+    Cursor::new(&mut buf[base..base + 4]).write_i32::<BigEndian>(size).unwrap();
+
+    Ok(())
+}
 
 trait FromUsize: Sized {
     fn from_usize(x: usize) -> Result<Self, io::Error>;
@@ -42,5 +66,5 @@ macro_rules! from_usize {
     }
 }
 
-from_usize!(u16);
+from_usize!(i16);
 from_usize!(i32);
