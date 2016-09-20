@@ -33,6 +33,7 @@ pub enum IsNull {
     No,
 }
 
+#[inline]
 fn write_nullable<F, E>(serializer: F, buf: &mut Vec<u8>) -> Result<(), E>
     where F: FnOnce(&mut Vec<u8>) -> Result<IsNull, E>,
           E: From<io::Error>
@@ -55,6 +56,7 @@ trait FromUsize: Sized {
 macro_rules! from_usize {
     ($t:ty) => {
         impl FromUsize for $t {
+            #[inline]
             fn from_usize(x: usize) -> io::Result<$t> {
                 if x > <$t>::max_value() as usize {
                     Err(io::Error::new(io::ErrorKind::InvalidInput, "value too large to transmit"))

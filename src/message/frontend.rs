@@ -8,6 +8,7 @@ use std::marker;
 
 use {Oid, FromUsize, IsNull, write_nullable};
 
+#[inline]
 fn write_body<F, E>(buf: &mut Vec<u8>, f: F) -> Result<(), E>
     where F: FnOnce(&mut Vec<u8>) -> Result<(), E>,
           E: From<io::Error>
@@ -28,17 +29,20 @@ pub enum BindError {
 }
 
 impl From<Box<Error + marker::Sync + Send>> for BindError {
+    #[inline]
     fn from(e: Box<Error + marker::Sync + Send>) -> BindError {
         BindError::Conversion(e)
     }
 }
 
 impl From<io::Error> for BindError {
+    #[inline]
     fn from(e: io::Error) -> BindError {
         BindError::Serialization(e)
     }
 }
 
+#[inline]
 pub fn bind<I, J, F, T, K>(portal: &str,
                         statement: &str,
                         formats: I,
@@ -67,6 +71,7 @@ pub fn bind<I, J, F, T, K>(portal: &str,
     })
 }
 
+#[inline]
 fn write_counted<I, T, F, E>(items: I, mut serializer: F, buf: &mut Vec<u8>) -> Result<(), E>
     where I: IntoIterator<Item = T>,
           F: FnMut(T, &mut Vec<u8>) -> Result<(), E>,
@@ -85,15 +90,16 @@ fn write_counted<I, T, F, E>(items: I, mut serializer: F, buf: &mut Vec<u8>) -> 
     Ok(())
 }
 
+#[inline]
 pub fn cancel_request(process_id: i32, secret_key: i32, buf: &mut Vec<u8>) {
     write_body(buf, |buf| {
         buf.write_i32::<BigEndian>(80877102).unwrap();
         buf.write_i32::<BigEndian>(process_id).unwrap();
-        buf.write_i32::<BigEndian>(secret_key).unwrap();
-        Ok::<(), io::Error>(())
+        buf.write_i32::<BigEndian>(secret_key)
     }).unwrap();
 }
 
+#[inline]
 pub fn close(variant: u8, name: &str, buf: &mut Vec<u8>) -> io::Result<()> {
     buf.push(b'C');
     write_body(buf, |buf| {
@@ -103,6 +109,7 @@ pub fn close(variant: u8, name: &str, buf: &mut Vec<u8>) -> io::Result<()> {
 }
 
 // FIXME ideally this'd take a Read but it's unclear what to do at EOF
+#[inline]
 pub fn copy_data(data: &[u8], buf: &mut Vec<u8>) -> io::Result<()> {
     buf.push(b'd');
     write_body(buf, |buf| {
@@ -111,16 +118,19 @@ pub fn copy_data(data: &[u8], buf: &mut Vec<u8>) -> io::Result<()> {
     })
 }
 
+#[inline]
 pub fn copy_done(buf: &mut Vec<u8>) {
     buf.push(b'c');
     write_body(buf, |_| Ok::<(), io::Error>(())).unwrap();
 }
 
+#[inline]
 pub fn copy_fail(message: &str, buf: &mut Vec<u8>) -> io::Result<()> {
     buf.push(b'f');
     write_body(buf, |buf| buf.write_cstr(message))
 }
 
+#[inline]
 pub fn describe(variant: u8, name: &str, buf: &mut Vec<u8>) -> io::Result<()> {
     buf.push(b'D');
     write_body(buf, |buf| {
@@ -129,6 +139,7 @@ pub fn describe(variant: u8, name: &str, buf: &mut Vec<u8>) -> io::Result<()> {
     })
 }
 
+#[inline]
 pub fn execute(portal: &str, max_rows: i32, buf: &mut Vec<u8>) -> io::Result<()> {
     buf.push(b'E');
     write_body(buf, |buf| {
@@ -138,6 +149,7 @@ pub fn execute(portal: &str, max_rows: i32, buf: &mut Vec<u8>) -> io::Result<()>
     })
 }
 
+#[inline]
 pub fn parse<I>(name: &str, query: &str, param_types: I, buf: &mut Vec<u8>) -> io::Result<()>
     where I: IntoIterator<Item = Oid>
 {
@@ -150,23 +162,24 @@ pub fn parse<I>(name: &str, query: &str, param_types: I, buf: &mut Vec<u8>) -> i
     })
 }
 
+#[inline]
 pub fn password_message(password: &str, buf: &mut Vec<u8>) -> io::Result<()> {
     buf.push(b'p');
     write_body(buf, |buf| buf.write_cstr(password))
 }
 
+#[inline]
 pub fn query(query: &str, buf: &mut Vec<u8>) -> io::Result<()> {
     buf.push(b'Q');
     write_body(buf, |buf| buf.write_cstr(query))
 }
 
+#[inline]
 pub fn ssl_request(buf: &mut Vec<u8>) {
-    write_body(buf, |buf| {
-        buf.write_i32::<BigEndian>(80877103).unwrap();
-        Ok::<(), io::Error>(())
-    }).unwrap();
+    write_body(buf, |buf| buf.write_i32::<BigEndian>(80877103)).unwrap();
 }
 
+#[inline]
 pub fn startup_message<'a, I>(parameters: I, buf: &mut Vec<u8>) -> io::Result<()>
     where I: IntoIterator<Item = (&'a str, &'a str)>
 {
@@ -181,11 +194,13 @@ pub fn startup_message<'a, I>(parameters: I, buf: &mut Vec<u8>) -> io::Result<()
     })
 }
 
+#[inline]
 pub fn sync(buf: &mut Vec<u8>) {
     buf.push(b'S');
     write_body(buf, |_| Ok::<(), io::Error>(())).unwrap();
 }
 
+#[inline]
 pub fn terminate(buf: &mut Vec<u8>) {
     buf.push(b'X');
     write_body(buf, |_| Ok::<(), io::Error>(())).unwrap();
@@ -196,6 +211,7 @@ trait WriteCStr {
 }
 
 impl WriteCStr for Vec<u8> {
+    #[inline]
     fn write_cstr(&mut self, s: &str) -> Result<(), io::Error> {
         if s.as_bytes().contains(&0) {
             return Err(io::Error::new(io::ErrorKind::InvalidInput,
