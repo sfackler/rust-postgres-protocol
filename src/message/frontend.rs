@@ -57,15 +57,11 @@ pub fn bind<I, J, F, T, K>(portal: &str,
     write_body(buf, |buf| {
         try!(buf.write_cstr(portal));
         try!(buf.write_cstr(statement));
-        try!(write_counted(formats,
-                           |f, buf| Ok::<(), io::Error>(buf.write_i16::<BigEndian>(f).unwrap()),
-                           buf));
+        try!(write_counted(formats, |f, buf| buf.write_i16::<BigEndian>(f), buf));
         try!(write_counted(values,
                            |v, buf| write_nullable(|buf| serializer(v, buf), buf),
                            buf));
-        try!(write_counted(result_formats,
-                           |f, buf| Ok::<(), io::Error>(buf.write_i16::<BigEndian>(f).unwrap()),
-                           buf));
+        try!(write_counted(result_formats, |f, buf| buf.write_i16::<BigEndian>(f), buf));
 
         Ok(())
     })
@@ -96,9 +92,12 @@ pub trait Message {
 }
 
 pub fn cancel_request(process_id: i32, secret_key: i32, buf: &mut Vec<u8>) {
-    buf.write_i32::<BigEndian>(80877102).unwrap();
-    buf.write_i32::<BigEndian>(process_id).unwrap();
-    buf.write_i32::<BigEndian>(secret_key).unwrap();
+    write_body(buf, |buf| {
+        buf.write_i32::<BigEndian>(80877102).unwrap();
+        buf.write_i32::<BigEndian>(process_id).unwrap();
+        buf.write_i32::<BigEndian>(secret_key).unwrap();
+        Ok::<(), io::Error>(())
+    }).unwrap();
 }
 
 pub fn close(variant: u8, name: &str, buf: &mut Vec<u8>) -> io::Result<()> {
@@ -150,80 +149,47 @@ pub fn execute(portal: &str, max_rows: i32, buf: &mut Vec<u8>) -> io::Result<()>
     })
 }
 
-pub struct Parse<'a> {
-    pub name: &'a str,
-    pub query: &'a str,
-    pub param_types: &'a [Oid],
-}
-
-impl<'a> Message for Parse<'a> {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
-        buf.push(b'P');
-        write_body(buf, |buf| {
-            try!(buf.write_cstr(self.name));
-            try!(buf.write_cstr(self.query));
-            let num_param_types = try!(i16::from_usize(self.param_types.len()));
-            try!(buf.write_i16::<BigEndian>(num_param_types));
-            for &param_type in self.param_types {
-                try!(buf.write_u32::<BigEndian>(param_type));
-            }
-            Ok(())
-        })
-    }
-}
-
-pub struct PasswordMessage<'a> {
-    pub password: &'a str,
-}
-
-impl<'a> Message for PasswordMessage<'a> {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
-        buf.push(b'p');
-        write_body(buf, |buf| buf.write_cstr(self.password))
-    }
-}
-
-pub struct Query<'a> {
-    pub query: &'a str,
-}
-
-impl<'a> Message for Query<'a> {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
-        buf.push(b'Q');
-        write_body(buf, |buf| buf.write_cstr(self.query))
-    }
-}
-
-pub struct SslRequest;
-
-impl Message for SslRequest {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
-        write_body(buf, |buf| {
-            try!(buf.write_i32::<BigEndian>(80877103));
-            Ok(())
-        })
-    }
-}
-
-pub struct StartupMessage<'a, T: 'a, U: 'a> {
-    pub parameters: &'a [(T, U)],
-}
-
-impl<'a, T, U> Message for StartupMessage<'a, T, U>
-    where T: AsRef<str>,
-          U: AsRef<str>
+pub fn parse<I>(name: &str, query: &str, param_types: I, buf: &mut Vec<u8>) -> io::Result<()>
+    where I: IntoIterator<Item = Oid>
 {
-    fn write(&self, buf: &mut Vec<u8>) -> Result<(), io::Error> {
-        write_body(buf, |buf| {
-            try!(buf.write_i32::<BigEndian>(196608));
-            for &(ref key, ref value) in self.parameters {
-                try!(buf.write_cstr(key.as_ref()));
-                try!(buf.write_cstr(value.as_ref()));
-            }
-            buf.push(0);
-            Ok(())
-        })
-    }
+    buf.push(b'P');
+    write_body(buf, |buf| {
+        try!(buf.write_cstr(name));
+        try!(buf.write_cstr(query));
+        try!(write_counted(param_types, |t, buf| buf.write_u32::<BigEndian>(t), buf));
+        Ok(())
+    })
+}
+
+pub fn password_message(password: &str, buf: &mut Vec<u8>) -> io::Result<()> {
+    buf.push(b'p');
+    write_body(buf, |buf| buf.write_cstr(password))
+}
+
+pub fn query(query: &str, buf: &mut Vec<u8>) -> io::Result<()> {
+    buf.push(b'Q');
+    write_body(buf, |buf| buf.write_cstr(query))
+}
+
+pub fn ssl_request(buf: &mut Vec<u8>) {
+    write_body(buf, |buf| {
+        buf.write_i32::<BigEndian>(80877103).unwrap();
+        Ok::<(), io::Error>(())
+    }).unwrap();
+}
+
+pub fn startup_message<'a, I>(parameters: I, buf: &mut Vec<u8>) -> io::Result<()>
+    where I: IntoIterator<Item = (&'a str, &'a str)>
+{
+    write_body(buf, |buf| {
+        buf.write_i32::<BigEndian>(196608).unwrap();
+        for (key, value) in parameters {
+            try!(buf.write_cstr(key.as_ref()));
+            try!(buf.write_cstr(value.as_ref()));
+        }
+        buf.push(0);
+        Ok(())
+    })
 }
 
 pub struct Sync;
