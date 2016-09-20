@@ -53,6 +53,7 @@ pub enum Message<'a> {
 }
 
 impl<'a> Message<'a> {
+    /// Attempts to deserialize a backend message from the buffer.
     pub fn parse(buf: &'a [u8]) -> io::Result<ParseResult<Message<'a>>> {
         if buf.len() < 5 {
             return Ok(ParseResult::Incomplete { required_size: None });
