@@ -741,6 +741,7 @@ mod test {
     use fallible_iterator::FallibleIterator;
 
     use super::*;
+    use IsNull;
 
     #[test]
     fn bool() {
