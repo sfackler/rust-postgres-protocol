@@ -9,6 +9,7 @@
 //!
 //! This library assumes that the `client_encoding` backend parameter has been
 //! set to `UTF8`. It will most likely not behave properly if that is not the case.
+#![doc(html_root_url="https://sfackler.github.io/rust-postgres-protocol/doc/v0.1.0")]
 #![warn(missing_docs)]
 extern crate byteorder;
 extern crate fallible_iterator;
