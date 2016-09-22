@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Message` enum in crate `postgres_protocol`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Message">
+
+    <title>postgres_protocol::message::backend::Message - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='../../index.html'>postgres_protocol</a>::<wbr><a href='../index.html'>message</a>::<wbr><a href='index.html'>backend</a></p><script>window.sidebarCurrent = {name: 'Message', ty: 'enum', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content enum">
+<h1 class='fqn'><span class='in-band'>Enum <a href='../../index.html'>postgres_protocol</a>::<wbr><a href='../index.html'>message</a>::<wbr><a href='index.html'>backend</a>::<wbr><a class='enum' href=''>Message</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-460' class='srclink' href='../../../src/postgres_protocol/src/message/backend/mod.rs.html#11-51' title='goto source code'>[src]</a></span></h1>
+<pre class='rust enum'>pub enum Message {
+    AuthenticationCleartextPassword,
+    AuthenticationGSS,
+    AuthenticationKerberosV5,
+    AuthenticationMD5Password {
+        salt: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.array.html'>[</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.array.html'>; 4]</a>,
+    },
+    AuthenticationOk,
+    AuthenticationSCMCredential,
+    AuthenticationSSPI,
+    BackendKeyData {
+        process_id: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a>,
+        secret_key: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a>,
+    },
+    BindComplete,
+    CloseComplete,
+    CommandComplete {
+        tag: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>,
+    },
+    CopyData {
+        data: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>&gt;,
+    },
+    CopyDone,
+    CopyInResponse {
+        format: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,
+        column_formats: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u16.html'>u16</a>&gt;,
+    },
+    CopyOutResponse {
+        format: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,
+        column_formats: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u16.html'>u16</a>&gt;,
+    },
+    DataRow {
+        row: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>&gt;&gt;&gt;,
+    },
+    EmptyQueryResponse,
+    ErrorResponse {
+        fields: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>(</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>, <a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>)</a>&gt;,
+    },
+    NoData,
+    NoticeResponse {
+        fields: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>(</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>, <a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>)</a>&gt;,
+    },
+    NotificationResponse {
+        process_id: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a>,
+        channel: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>,
+        payload: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>,
+    },
+    ParameterDescription {
+        types: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='type' href='../../../postgres_protocol/type.Oid.html' title='postgres_protocol::Oid'>Oid</a>&gt;,
+    },
+    ParameterStatus {
+        parameter: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>,
+        value: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>,
+    },
+    ParseComplete,
+    PortalSuspended,
+    ReadyForQuery {
+        state: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>,
+    },
+    RowDescription {
+        descriptions: <a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='struct' href='../../../postgres_protocol/message/backend/struct.RowDescriptionEntry.html' title='postgres_protocol::message::backend::RowDescriptionEntry'>RowDescriptionEntry</a>&gt;,
+    },
+    // some variants omitted
+}</pre><div class='docblock'><p>An enum representing Postgres backend messages.</p>
+</div><h2 class='variants'>Variants</h2>
+<span id='variant.AuthenticationCleartextPassword' class='variant'><code>AuthenticationCleartextPassword</code></span><span id='variant.AuthenticationGSS' class='variant'><code>AuthenticationGSS</code></span><span id='variant.AuthenticationKerberosV5' class='variant'><code>AuthenticationKerberosV5</code></span><span id='variant.AuthenticationMD5Password' class='variant'><code>AuthenticationMD5Password</code></span><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.AuthenticationMD5Password.field.salt'><code>salt:&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.array.html'>[</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.array.html'>; 4]</a></code></td><td></td></tr></table><span id='variant.AuthenticationOk' class='variant'><code>AuthenticationOk</code></span><span id='variant.AuthenticationSCMCredential' class='variant'><code>AuthenticationSCMCredential</code></span><span id='variant.AuthenticationSSPI' class='variant'><code>AuthenticationSSPI</code></span><span id='variant.BackendKeyData' class='variant'><code>BackendKeyData</code></span><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.BackendKeyData.field.process_id'><code>process_id:&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a></code></td><td></td></tr><tr><td id='variant.BackendKeyData.field.secret_key'><code>secret_key:&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a></code></td><td></td></tr></table><span id='variant.BindComplete' class='variant'><code>BindComplete</code></span><span id='variant.CloseComplete' class='variant'><code>CloseComplete</code></span><span id='variant.CommandComplete' class='variant'><code>CommandComplete</code></span><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.CommandComplete.field.tag'><code>tag:&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a></code></td><td></td></tr></table><span id='variant.CopyData' class='variant'><code>CopyData</code></span><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.CopyData.field.data'><code>data:&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>&gt;</code></td><td></td></tr></table><span id='variant.CopyDone' class='variant'><code>CopyDone</code></span><span id='variant.CopyInResponse' class='variant'><code>CopyInResponse</code></span><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.CopyInResponse.field.format'><code>format:&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a></code></td><td></td></tr><tr><td id='variant.CopyInResponse.field.column_formats'><code>column_formats:&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u16.html'>u16</a>&gt;</code></td><td></td></tr></table><span id='variant.CopyOutResponse' class='variant'><code>CopyOutResponse</code></span><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.CopyOutResponse.field.format'><code>format:&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a></code></td><td></td></tr><tr><td id='variant.CopyOutResponse.field.column_formats'><code>column_formats:&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u16.html'>u16</a>&gt;</code></td><td></td></tr></table><span id='variant.DataRow' class='variant'><code>DataRow</code></span><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.DataRow.field.row'><code>row:&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>&gt;&gt;&gt;</code></td><td></td></tr></table><span id='variant.EmptyQueryResponse' class='variant'><code>EmptyQueryResponse</code></span><span id='variant.ErrorResponse' class='variant'><code>ErrorResponse</code></span><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.ErrorResponse.field.fields'><code>fields:&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>(</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>, <a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>)</a>&gt;</code></td><td></td></tr></table><span id='variant.NoData' class='variant'><code>NoData</code></span><span id='variant.NoticeResponse' class='variant'><code>NoticeResponse</code></span><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.NoticeResponse.field.fields'><code>fields:&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>(</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>, <a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>)</a>&gt;</code></td><td></td></tr></table><span id='variant.NotificationResponse' class='variant'><code>NotificationResponse</code></span><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.NotificationResponse.field.process_id'><code>process_id:&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a></code></td><td></td></tr><tr><td id='variant.NotificationResponse.field.channel'><code>channel:&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a></code></td><td></td></tr><tr><td id='variant.NotificationResponse.field.payload'><code>payload:&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a></code></td><td></td></tr></table><span id='variant.ParameterDescription' class='variant'><code>ParameterDescription</code></span><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.ParameterDescription.field.types'><code>types:&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='type' href='../../../postgres_protocol/type.Oid.html' title='postgres_protocol::Oid'>Oid</a>&gt;</code></td><td></td></tr></table><span id='variant.ParameterStatus' class='variant'><code>ParameterStatus</code></span><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.ParameterStatus.field.parameter'><code>parameter:&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a></code></td><td></td></tr><tr><td id='variant.ParameterStatus.field.value'><code>value:&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a></code></td><td></td></tr></table><span id='variant.ParseComplete' class='variant'><code>ParseComplete</code></span><span id='variant.PortalSuspended' class='variant'><code>PortalSuspended</code></span><span id='variant.ReadyForQuery' class='variant'><code>ReadyForQuery</code></span><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.ReadyForQuery.field.state'><code>state:&nbsp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a></code></td><td></td></tr></table><span id='variant.RowDescription' class='variant'><code>RowDescription</code></span><h3 class='fields'>Fields</h3>
+
+                           <table><tr><td id='variant.RowDescription.field.descriptions'><code>descriptions:&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='struct' href='../../../postgres_protocol/message/backend/struct.RowDescriptionEntry.html' title='postgres_protocol::message::backend::RowDescriptionEntry'>RowDescriptionEntry</a>&gt;</code></td><td></td></tr></table><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl <a class='enum' href='../../../postgres_protocol/message/backend/enum.Message.html' title='postgres_protocol::message::backend::Message'>Message</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-510' class='srclink' href='../../../src/postgres_protocol/src/message/backend/mod.rs.html#53-69' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.parse' class='method'><code>fn <a href='#method.parse' class='fnname'>parse</a>(buf: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>) -&gt; <a class='type' href='https://doc.rust-lang.org/nightly/std/io/error/type.Result.html' title='std::io::error::Result'>Result</a>&lt;<a class='enum' href='../../../postgres_protocol/message/backend/enum.ParseResult.html' title='postgres_protocol::message::backend::ParseResult'>ParseResult</a>&lt;<a class='enum' href='../../../postgres_protocol/message/backend/enum.Message.html' title='postgres_protocol::message::backend::Message'>Message</a>&gt;&gt;</code></h4>
+<div class='docblock'><p>Attempts to deserialize a backend message from the buffer.</p>
+</div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../../";
+        window.currentCrate = "postgres_protocol";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../../jquery.js"></script>
+    <script src="../../../main.js"></script>
+    
+    <script defer src="../../../search-index.js"></script>
+</body>
+</html>

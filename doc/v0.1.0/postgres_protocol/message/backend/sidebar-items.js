@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Message","An enum representing Postgres backend messages."],["ParseResult","The result of an attempted parse."]],"mod":[["borrowed","An allocation-free backend message parser."]],"struct":[["RowDescriptionEntry",""]]});
