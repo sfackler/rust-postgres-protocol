@@ -2,7 +2,6 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
 use fallible_iterator::FallibleIterator;
 use std::error::Error;
-use std::io::Cursor;
 use std::str;
 
 use {Oid, IsNull, write_nullable, FromUsize};
@@ -188,7 +187,7 @@ pub fn hstore_to_sql<'a, I>(values: I, buf: &mut Vec<u8>) -> Result<(), Box<Erro
     }
 
     let count = try!(i32::from_usize(count));
-    Cursor::new(&mut buf[base..base + 4]).write_i32::<BigEndian>(count).unwrap();
+    (&mut buf[base..base + 4]).write_i32::<BigEndian>(count).unwrap();
 
     Ok(())
 }
@@ -437,7 +436,7 @@ pub fn array_to_sql<T, I, J, F>(dimensions: I,
     }
 
     let num_dimensions = try!(i32::from_usize(num_dimensions));
-    Cursor::new(&mut buf[dimensions_idx..dimensions_idx + 4])
+    (&mut buf[dimensions_idx..dimensions_idx + 4])
         .write_i32::<BigEndian>(num_dimensions)
         .unwrap();
 
@@ -657,7 +656,7 @@ fn write_bound<F>(bound: F, buf: &mut Vec<u8>) -> Result<RangeBound<()>, Box<Err
                 IsNull::No => try!(i32::from_usize(buf.len() - base - 4)),
                 IsNull::Yes => -1,
             };
-            Cursor::new(&mut buf[base..base + 4]).write_i32::<BigEndian>(len).unwrap();
+            (&mut buf[base..base + 4]).write_i32::<BigEndian>(len).unwrap();
         }
         None => buf.truncate(base),
     }

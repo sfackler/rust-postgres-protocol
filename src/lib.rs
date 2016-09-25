@@ -17,7 +17,7 @@ extern crate hex;
 extern crate md5;
 
 use byteorder::{WriteBytesExt, BigEndian};
-use std::io::{self, Cursor};
+use std::io;
 
 pub mod authentication;
 pub mod message;
@@ -45,7 +45,7 @@ fn write_nullable<F, E>(serializer: F, buf: &mut Vec<u8>) -> Result<(), E>
         IsNull::No => try!(i32::from_usize(buf.len() - base - 4)),
         IsNull::Yes => -1,
     };
-    Cursor::new(&mut buf[base..base + 4]).write_i32::<BigEndian>(size).unwrap();
+    (&mut buf[base..base + 4]).write_i32::<BigEndian>(size).unwrap();
 
     Ok(())
 }
