@@ -8,6 +8,109 @@ use std::marker;
 
 use {Oid, FromUsize, IsNull, write_nullable};
 
+pub enum Message<'a> {
+    Bind {
+        portal: &'a str,
+        statement: &'a str,
+        formats: &'a [i16],
+        values: &'a [Option<Vec<u8>>],
+        result_formats: &'a [i16],
+    },
+    CancelRequest {
+        process_id: i32,
+        secret_key: i32,
+    },
+    Close {
+        variant: u8,
+        name: &'a str,
+    },
+    CopyData {
+        data: &'a [u8],
+    },
+    CopyDone,
+    CopyFail {
+        message: &'a str,
+    },
+    Describe {
+        variant: u8,
+        name: &'a str,
+    },
+    Execute {
+        portal: &'a str,
+        max_rows: i32,
+    },
+    Parse {
+        name: &'a str,
+        query: &'a str,
+        param_types: &'a [Oid],
+    },
+    PasswordMessage {
+        password: &'a str,
+    },
+    Query {
+        query: &'a str,
+    },
+    SslRequest,
+    StartupMessage {
+        parameters: &'a [(String, String)],
+    },
+    Sync,
+    Terminate,
+    #[doc(hidden)]
+    __ForExtensibility,
+}
+
+impl<'a> Message<'a> {
+    #[inline]
+    pub fn serialize(&self, buf: &mut Vec<u8>) -> io::Result<()> {
+        match *self {
+            Message::Bind { portal, statement, formats, values, result_formats } => {
+                let r = bind(portal,
+                             statement,
+                             formats.iter().cloned(),
+                             values,
+                             |v, buf| {
+                                 match *v {
+                                     Some(ref v) => {
+                                         buf.extend_from_slice(v);
+                                         Ok(IsNull::No)
+                                     }
+                                     None => Ok(IsNull::Yes),
+                                 }
+                             },
+                             result_formats.iter().cloned(),
+                             buf);
+                match r {
+                    Ok(()) => Ok(()),
+                    Err(BindError::Conversion(_)) => unreachable!(),
+                    Err(BindError::Serialization(e)) => Err(e),
+                }
+            }
+            Message::CancelRequest { process_id, secret_key } => {
+                Ok(cancel_request(process_id, secret_key, buf))
+            }
+            Message::Close { variant, name } => close(variant, name, buf),
+            Message::CopyData { data } => copy_data(data, buf),
+            Message::CopyDone => Ok(copy_done(buf)),
+            Message::CopyFail { message } => copy_fail(message, buf),
+            Message::Describe { variant, name } => describe(variant, name, buf),
+            Message::Execute { portal, max_rows } => execute(portal, max_rows, buf),
+            Message::Parse { name, query, param_types } => {
+                parse(name, query, param_types.iter().cloned(), buf)
+            }
+            Message::PasswordMessage { password } => password_message(password, buf),
+            Message::Query { query: q } => query(q, buf),
+            Message::SslRequest => Ok(ssl_request(buf)),
+            Message::StartupMessage { parameters } => {
+                startup_message(parameters.iter().map(|&(ref k, ref v)| (&**k, &**v)), buf)
+            }
+            Message::Sync => Ok(sync(buf)),
+            Message::Terminate => Ok(terminate(buf)),
+            Message::__ForExtensibility => unreachable!(),
+        }
+    }
+}
+
 #[inline]
 fn write_body<F, E>(buf: &mut Vec<u8>, f: F) -> Result<(), E>
     where F: FnOnce(&mut Vec<u8>) -> Result<(), E>,
