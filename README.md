@@ -1,6 +1,6 @@
 # postgres-protocol
 
-[Documentation](https://sfackler.github.io/rust-postgres-protocol/doc/v0.1.1/postgres_protocol)
+[Documentation](https://docs.rs/postgres-protocol/0.2.0/postgres_protocol)
 
 [![Build Status](https://travis-ci.org/sfackler/rust-postgres-protocol.png?branch=master)](https://travis-ci.org/sfackler/rust-postgres-protocol) [![Latest Version](https://img.shields.io/crates/v/postgres-protocol.svg)](https://crates.io/crates/postgres-protocol)
 
