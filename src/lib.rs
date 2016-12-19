@@ -15,6 +15,7 @@ extern crate byteorder;
 extern crate fallible_iterator;
 extern crate hex;
 extern crate md5;
+extern crate memchr;
 
 use byteorder::{WriteBytesExt, BigEndian};
 use std::io;
