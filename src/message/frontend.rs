@@ -1,7 +1,7 @@
 //! Frontend message serialization.
 #![allow(missing_docs)]
 
-use byteorder::{WriteBytesExt, BigEndian};
+use byteorder::{WriteBytesExt, BigEndian, ByteOrder};
 use std::error::Error;
 use std::io;
 use std::marker;
@@ -122,7 +122,7 @@ fn write_body<F, E>(buf: &mut Vec<u8>, f: F) -> Result<(), E>
     try!(f(buf));
 
     let size = try!(i32::from_usize(buf.len() - base));
-    (&mut buf[base..base + 4]).write_i32::<BigEndian>(size).unwrap();
+    BigEndian::write_i32(&mut buf[base..], size);
     Ok(())
 }
 
@@ -188,7 +188,7 @@ fn write_counted<I, T, F, E>(items: I, mut serializer: F, buf: &mut Vec<u8>) -> 
         count += 1;
     }
     let count = try!(i16::from_usize(count));
-    (&mut buf[base..base + 2]).write_i16::<BigEndian>(count).unwrap();
+    BigEndian::write_i16(&mut buf[base..], count);
 
     Ok(())
 }
