@@ -11,6 +11,5 @@ readme = "README.md"
 [dependencies]
 byteorder = "1.0"
 fallible-iterator = "0.1"
-hex = "0.2"
-md5 = "0.2"
+md5 = "0.3"
 memchr = "1.0"
